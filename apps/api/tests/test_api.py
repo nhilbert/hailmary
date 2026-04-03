@@ -51,6 +51,9 @@ def test_route_simulation_returns_leg() -> None:
 
 
 def test_route_solver_returns_relativistic_timeline() -> None:
+    # Gravity assist candidates now use Oberth parameters instead of flat deltaVBonusMps.
+    # Jupiter: GM = 1.267e17 m³/s², min flyby ≈ 1 Jupiter radius = 7.15e7 m,
+    #          peculiar velocity ≈ 13,100 m/s (orbital speed in Sol frame).
     response = client.post(
         "/routes/solve",
         json={
@@ -59,25 +62,38 @@ def test_route_solver_returns_relativistic_timeline() -> None:
                 "fuelMassKg": 4000,
                 "thrustNewtons": 900000,
                 "ispSeconds": 350,
+                "shieldMassKg": 500,
             },
             "mission": {
                 "distanceKm": 1200000,
-                "coastFraction": 0.5,
                 "maxVelocityMps": 30000,
                 "enableGravityAssist": True,
                 "integrationStepSeconds": 0.5,
             },
             "gravityAssistCandidates": [
-                {"name": "Europa", "deltaVBonusMps": 1500},
-                {"name": "Callisto", "deltaVBonusMps": 300},
+                {
+                    "name": "Jupiter",
+                    "stellar_gm_m3_s2": 1.267e17,
+                    "min_flyby_radius_m": 7.15e7,
+                    "peculiar_velocity_mps": 13100,
+                },
+                {
+                    "name": "Saturn",
+                    "stellar_gm_m3_s2": 3.793e16,
+                    "min_flyby_radius_m": 6.03e7,
+                    "peculiar_velocity_mps": 9700,
+                },
             ],
         },
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["gravityAssistChosen"] == "Europa"
+    assert data["gravityAssistChosen"] in ("Jupiter", "Saturn")
     assert data["totalEarthFrameSeconds"] >= data["totalOnboardSeconds"]
+    assert "coastFractionUsed" in data
+    assert 0.0 <= data["coastFractionUsed"] <= 1.0
+    assert data["shieldRemainingKg"] >= 0
 
     phases = [segment["phase"] for segment in data["segments"]]
     assert phases == ["acceleration", "gravity_assist", "coast", "deceleration"]
@@ -85,3 +101,4 @@ def test_route_solver_returns_relativistic_timeline() -> None:
     decel_segment = data["segments"][-1]
     assert decel_segment["fuelRemainingKg"] >= 0
     assert decel_segment["lorentzFactor"] >= 1
+    assert "shieldRemainingKg" in decel_segment

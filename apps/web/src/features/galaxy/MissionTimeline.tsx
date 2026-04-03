@@ -6,6 +6,8 @@ interface MissionTimelineProps {
   events: TimelineEvent[];
   activeIndex: number;
   onScrub: (index: number) => void;
+  coastFractionUsed?: number;
+  initialShieldKg?: number;
 }
 
 function fmtDuration(hours: number): string {
@@ -14,7 +16,18 @@ function fmtDuration(hours: number): string {
   return `${hours.toFixed(1)} h`;
 }
 
-export const MissionTimeline = ({ events, activeIndex, onScrub }: MissionTimelineProps) => {
+function fmtMass(kg: number): string {
+  if (kg >= 1_000) return `${(kg / 1_000).toFixed(1)} t`;
+  return `${kg.toFixed(0)} kg`;
+}
+
+export const MissionTimeline = ({
+  events,
+  activeIndex,
+  onScrub,
+  coastFractionUsed,
+  initialShieldKg,
+}: MissionTimelineProps) => {
   const { t } = useTranslation();
 
   if (events.length === 0) {
@@ -23,11 +36,24 @@ export const MissionTimeline = ({ events, activeIndex, onScrub }: MissionTimelin
 
   const totalEarth   = events.reduce((s, e) => s + e.durationHours,        0);
   const totalOnboard = events.reduce((s, e) => s + e.durationHoursOnboard, 0);
-  const activeEvent  = events[activeIndex] ?? events[0];
+  const finalShield  = events[events.length - 1]?.shieldRemainingKg ?? 0;
+  const shieldDepleted = (initialShieldKg ?? 0) > 0 && finalShield <= 0;
 
   return (
     <section aria-label={t('timelineTitle')} className="timeline">
       <h3>{t('timelineTitle')}</h3>
+
+      {coastFractionUsed !== undefined && (
+        <p className="timeline-coast-note">
+          {t('timelineCoastNote', { pct: (coastFractionUsed * 100).toFixed(1) })}
+        </p>
+      )}
+
+      {shieldDepleted && (
+        <p className="timeline-shield-warn" role="alert">
+          {t('timelineShieldWarn')}
+        </p>
+      )}
 
       {/* Relativistic time comparison table */}
       <table className="timeline-table">
@@ -36,6 +62,7 @@ export const MissionTimeline = ({ events, activeIndex, onScrub }: MissionTimelin
             <th>{t('timelinePhase')}</th>
             <th>{t('timelineShipTime')}</th>
             <th>{t('timelineEarthTime')}</th>
+            {(initialShieldKg ?? 0) > 0 && <th>{t('timelineShield')}</th>}
           </tr>
         </thead>
         <tbody>
@@ -47,6 +74,9 @@ export const MissionTimeline = ({ events, activeIndex, onScrub }: MissionTimelin
               </td>
               <td>{fmtDuration(event.durationHoursOnboard)}</td>
               <td>{fmtDuration(event.durationHours)}</td>
+              {(initialShieldKg ?? 0) > 0 && (
+                <td>{fmtMass(event.shieldRemainingKg)}</td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -55,6 +85,7 @@ export const MissionTimeline = ({ events, activeIndex, onScrub }: MissionTimelin
             <td>{t('timelineTotal')}</td>
             <td>{fmtDuration(totalOnboard)}</td>
             <td>{fmtDuration(totalEarth)}</td>
+            {(initialShieldKg ?? 0) > 0 && <td>{fmtMass(finalShield)}</td>}
           </tr>
         </tfoot>
       </table>

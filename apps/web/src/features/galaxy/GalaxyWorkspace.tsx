@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { solveRoute } from './api';
-import { STARS } from './data';
+import { ALL_STARS } from './data';
 import { GalaxyViewport } from './GalaxyViewport';
 import { MissionTimeline } from './MissionTimeline';
 import { ShipParametersForm } from './ShipParametersForm';
@@ -16,16 +16,24 @@ const defaultShip: ShipParameters = {
 
 export const GalaxyWorkspace = () => {
   const { t } = useTranslation();
-  const [selectedStarId, setSelectedStarId] = useState(STARS[0].id);
-  const [routeStartId, setRouteStartId] = useState(STARS[0].id);
-  const [routeEndId, setRouteEndId] = useState(STARS[1].id);
+  const [selectedStarId, setSelectedStarId] = useState(ALL_STARS[0].id);
+  const [routeStartId, setRouteStartId] = useState(ALL_STARS[0].id);
+  const [routeEndId, setRouteEndId] = useState(ALL_STARS[1].id);
+  const [routeFilter, setRouteFilter] = useState('');
   const [ship, setShip] = useState<ShipParameters>(defaultShip);
   const [segments, setSegments] = useState<ManeuverSegment[]>([]);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [status, setStatus] = useState('');
   const [solving, setSolving] = useState(false);
+  const [coastFractionUsed, setCoastFractionUsed] = useState<number | undefined>(undefined);
+  const [initialShieldKg, setInitialShieldKg] = useState<number | undefined>(undefined);
+  const [epochYears, setEpochYears] = useState(0);
+  const [aberrationBeta, setAberrationBeta] = useState(0);
 
-  const selectedStar = STARS.find((star) => star.id === selectedStarId) ?? STARS[0];
+  const selectedStar = ALL_STARS.find((star) => star.id === selectedStarId) ?? ALL_STARS[0];
+  const filteredRouteStars = routeFilter
+    ? ALL_STARS.filter((s) => s.name.toLowerCase().includes(routeFilter.toLowerCase()))
+    : ALL_STARS.filter((s) => !s.id.startsWith('hyg-'));
 
   const timeline = useMemo<TimelineEvent[]>(() => {
     let elapsed = 0;
@@ -44,6 +52,7 @@ export const GalaxyWorkspace = () => {
         elapsedHours: elapsed,
         durationHours: segment.durationHours,
         durationHoursOnboard: segment.durationHoursOnboard,
+        shieldRemainingKg: segment.shieldRemainingKg,
       };
     });
   }, [segments, t]);
@@ -61,6 +70,8 @@ export const GalaxyWorkspace = () => {
     try {
       const response = await solveRoute({ startStarId: routeStartId, endStarId: routeEndId, ship });
       setSegments(response.segments);
+      setCoastFractionUsed(response.coastFractionUsed);
+      setInitialShieldKg(response.segments[0]?.shieldRemainingKg);
       setTimelineIndex(0);
       setStatus(t('routeSolved', { count: response.segments.length }));
     } catch {
@@ -74,11 +85,13 @@ export const GalaxyWorkspace = () => {
   return (
     <section className="galaxy-layout" aria-label={t('mainHeading')}>
       <GalaxyViewport
-        stars={STARS}
+        stars={ALL_STARS}
         selectedStarId={selectedStarId}
         onSelectStar={setSelectedStarId}
         segments={segments}
         activeSegmentId={activeSegmentId}
+        epochYears={epochYears}
+        aberrationBeta={aberrationBeta}
       />
 
       <aside className="details-panel" aria-live="polite">
@@ -86,7 +99,7 @@ export const GalaxyWorkspace = () => {
         <p>
           <strong>{selectedStar.name}</strong>
         </p>
-        <p>{t(selectedStar.descriptionKey)}</p>
+        <p>{selectedStar.description ?? (selectedStar.descriptionKey ? t(selectedStar.descriptionKey) : '')}</p>
         <dl>
           <dt>{t('constellation')}</dt>
           <dd>{selectedStar.constellation}</dd>
@@ -97,9 +110,18 @@ export const GalaxyWorkspace = () => {
         </dl>
 
         <div className="route-controls">
+          <label htmlFor="route-star-filter">{t('starFilter')}</label>
+          <input
+            id="route-star-filter"
+            type="search"
+            placeholder={t('starFilterPlaceholder')}
+            value={routeFilter}
+            onChange={(e) => setRouteFilter(e.target.value)}
+          />
+
           <label htmlFor="route-start">{t('routeStart')}</label>
           <select id="route-start" value={routeStartId} onChange={(event) => setRouteStartId(event.target.value)}>
-            {STARS.map((star) => (
+            {filteredRouteStars.map((star) => (
               <option key={star.id} value={star.id}>
                 {star.name}
               </option>
@@ -108,12 +130,46 @@ export const GalaxyWorkspace = () => {
 
           <label htmlFor="route-end">{t('routeEnd')}</label>
           <select id="route-end" value={routeEndId} onChange={(event) => setRouteEndId(event.target.value)}>
-            {STARS.map((star) => (
+            {filteredRouteStars.map((star) => (
               <option key={star.id} value={star.id}>
                 {star.name}
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Proper-motion epoch slider */}
+        <div className="epoch-controls">
+          <label htmlFor="epoch-slider">
+            {t('epochLabel')}: {epochYears >= 0 ? '+' : ''}{epochYears.toLocaleString()} {t('epochYears')}
+          </label>
+          <input
+            id="epoch-slider"
+            type="range"
+            min={-50000}
+            max={100000}
+            step={100}
+            value={epochYears}
+            onChange={(e) => setEpochYears(Number(e.target.value))}
+          />
+          <button type="button" onClick={() => setEpochYears(0)}>{t('epochReset')}</button>
+        </div>
+
+        {/* Stellar aberration */}
+        <div className="aberration-controls">
+          <label htmlFor="aberration-slider">
+            {t('aberrationLabel')}: {aberrationBeta > 0 ? `${(aberrationBeta * 100).toFixed(0)}% c` : t('aberrationOff')}
+          </label>
+          <input
+            id="aberration-slider"
+            type="range"
+            min={0}
+            max={0.9999}
+            step={0.01}
+            value={aberrationBeta}
+            onChange={(e) => setAberrationBeta(Number(e.target.value))}
+          />
+          <button type="button" onClick={() => setAberrationBeta(0)}>{t('aberrationReset')}</button>
         </div>
 
         <ShipParametersForm value={ship} onChange={setShip} onSubmit={() => void handleSolve()} loading={solving} />
@@ -128,6 +184,8 @@ export const GalaxyWorkspace = () => {
               setSelectedStarId(target.targetStarId);
             }
           }}
+          coastFractionUsed={coastFractionUsed}
+          initialShieldKg={initialShieldKg}
         />
 
         <section className="sr-only" aria-live="polite" aria-atomic="true">

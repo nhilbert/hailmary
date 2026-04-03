@@ -275,6 +275,10 @@ async function loadHygStars(scene: Scene, proceduralMesh: Mesh): Promise<void> {
 export interface GalaxyScene {
   updateSelection: (starId: string) => void;
   updateRoute: (segments: ManeuverSegment[], activeSegmentId: string | null) => void;
+  /** Move all star spheres to their positions at the given epoch offset [years from J2000]. */
+  updateEpoch: (yearsFromNow: number) => void;
+  /** Apply relativistic stellar aberration for the given ship beta (v/c, 0 = off). */
+  setAberrationBeta: (beta: number) => void;
   dispose: () => void;
 }
 
@@ -338,7 +342,11 @@ export function initGalaxyScene(
     mat.disableLighting = true;
     sphere.material    = mat;
 
-    glow.addIncludedOnlyMesh(sphere);
+    // Limit glow to bright/named stars; faint catalogue stars don't need it
+    // and adding 1000 meshes to the glow layer would tank performance.
+    if (star.magnitude < 9 || isSol) {
+      glow.addIncludedOnlyMesh(sphere);
+    }
     starMeshes.set(star.id, sphere);
   }
 
@@ -379,6 +387,65 @@ export function initGalaxyScene(
     }
   };
 
+  // ── Proper-motion epoch update ───────────────────────────────────
+  // Moves each star sphere to its position at J2000 + yearsFromNow.
+  // pmX/Y/Z are in pc/yr in Babylon space.
+  const updateEpoch = (yearsFromNow: number) => {
+    for (const star of stars) {
+      const mesh = starMeshes.get(star.id);
+      if (!mesh) continue;
+      const pmX = star.pmX ?? 0;
+      const pmY = star.pmY ?? 0;
+      const pmZ = star.pmZ ?? 0;
+      mesh.position.set(
+        star.posX + pmX * yearsFromNow,
+        star.posY + pmY * yearsFromNow,
+        star.posZ + pmZ * yearsFromNow,
+      );
+    }
+  };
+
+  // ── Stellar aberration ───────────────────────────────────────────
+  // For a ship moving at beta = v/c along +Z (toward destination),
+  // each star's apparent angle θ' satisfies:
+  //   cos θ' = (cos θ + β) / (1 + β·cos θ)
+  // We implement this by displacing each sphere's position to its
+  // aberrated direction (same distance, shifted angle).
+  const setAberrationBeta = (beta: number) => {
+    if (Math.abs(beta) < 1e-6) {
+      // Reset to epoch positions
+      updateEpoch(0);
+      return;
+    }
+    for (const star of stars) {
+      const mesh = starMeshes.get(star.id);
+      if (!mesh || star.id === 'sol') continue;
+
+      const px = star.posX, py = star.posY, pz = star.posZ;
+      const dist = Math.sqrt(px * px + py * py + pz * pz);
+      if (dist < 1e-9) continue;
+
+      // Ship moves along +Z; cos θ = pz / dist (angle from ship's heading)
+      const cosTheta  = pz / dist;
+      const cosThetaP = (cosTheta + beta) / (1.0 + beta * cosTheta);
+
+      // Preserve the transverse direction, scale polar angle
+      const sinThetaP = Math.sqrt(Math.max(0, 1.0 - cosThetaP * cosThetaP));
+      const sinTheta  = Math.sqrt(Math.max(1e-30, 1.0 - cosTheta * cosTheta));
+      const scale = sinTheta > 1e-9 ? sinThetaP / sinTheta : 1.0;
+
+      mesh.position.set(
+        px * scale,
+        py * scale,
+        pz * cosThetaP / (cosTheta === 0 ? 1 : Math.abs(cosTheta)) * (pz >= 0 ? 1 : -1) * (dist / dist),
+      );
+      // Proper Z coordinate: dist * cosThetaP
+      mesh.position.z = dist * cosThetaP;
+      mesh.position.x = px * scale;
+      mesh.position.y = py * scale;
+    }
+  };
+
   // ── Star selection ───────────────────────────────────────────────
   const updateSelection = (starId: string) => {
     for (const [id, mesh] of starMeshes) {
@@ -407,6 +474,8 @@ export function initGalaxyScene(
   return {
     updateSelection,
     updateRoute,
+    updateEpoch,
+    setAberrationBeta,
     dispose: () => {
       window.removeEventListener('resize', onResize);
       engine.dispose();

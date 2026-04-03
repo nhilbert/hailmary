@@ -66,16 +66,22 @@ class SolveShipParameters(BaseModel):
     fuelMassKg: float = Field(ge=0)
     thrustNewtons: float = Field(gt=0)
     ispSeconds: float = Field(gt=0)
+    shieldMassKg: float | None = Field(default=None, ge=0)
 
 
 class GravityAssistCandidate(BaseModel):
     name: str = Field(min_length=1)
-    deltaVBonusMps: float = Field(ge=0)
+    # Oberth-aware gravity assist parameters
+    stellar_gm_m3_s2: float = Field(gt=0, description="G·M of the flyby star [m³/s²]")
+    min_flyby_radius_m: float = Field(gt=0, description="Minimum safe periapsis radius [m]")
+    peculiar_velocity_mps: float = Field(ge=0, description="Stellar peculiar velocity vs Sol [m/s]")
 
 
 class SolveMissionParameters(BaseModel):
     distanceKm: float = Field(gt=0)
-    coastFraction: float = Field(default=0.4, ge=0, le=1)
+    # coastFraction is now computed by the brachistochrone optimizer; this field
+    # is ignored by the solver but kept for backwards compatibility.
+    coastFraction: float = Field(default=0.0, ge=0, le=1)
     maxVelocityMps: float | None = Field(default=None, gt=0)
     enableGravityAssist: bool = False
     integrationStepSeconds: float = Field(default=1.0, gt=0)
@@ -108,6 +114,7 @@ class SolveTimelineSegment(BaseModel):
     startOnboardTimeSeconds: float = Field(ge=0)
     endOnboardTimeSeconds: float = Field(ge=0)
     fuelRemainingKg: float = Field(ge=0)
+    shieldRemainingKg: float = Field(ge=0)
     relativisticKineticEnergyJoules: float = Field(ge=0)
     lorentzFactor: float = Field(ge=1)
     gravityAssistUsed: str | None = None
@@ -120,5 +127,7 @@ class SolveTrajectoryResponse(BaseModel):
     totalDeltaVMps: float = Field(ge=0)
     finalVelocityMps: float = Field(ge=0)
     fuelRemainingKg: float = Field(ge=0)
+    shieldRemainingKg: float = Field(ge=0)
+    coastFractionUsed: float = Field(ge=0, le=1)
     segments: list[SolveTimelineSegment]
     gravityAssistChosen: str | None = None

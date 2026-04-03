@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { initGalaxyScene } from '../../scene/bootstrapBabylon';
 import type { GalaxyScene } from '../../scene/bootstrapBabylon';
@@ -10,6 +10,10 @@ interface GalaxyViewportProps {
   onSelectStar: (id: string) => void;
   segments: ManeuverSegment[];
   activeSegmentId: string | null;
+  /** Epoch offset in years from J2000 (drives proper-motion display). */
+  epochYears: number;
+  /** Ship beta = v/c for aberration view (0 = disabled). */
+  aberrationBeta: number;
 }
 
 export const GalaxyViewport = ({
@@ -18,13 +22,18 @@ export const GalaxyViewport = ({
   onSelectStar,
   segments,
   activeSegmentId,
+  epochYears,
+  aberrationBeta,
 }: GalaxyViewportProps) => {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef  = useRef<GalaxyScene | null>(null);
+  const [pickerFilter, setPickerFilter] = useState('');
 
-  // Initialise Babylon.js once on mount.
-  // stars and onSelectStar are module-level constants and never change.
+  const visibleStars = pickerFilter
+    ? stars.filter((s) => s.name.toLowerCase().includes(pickerFilter.toLowerCase()))
+    : stars.filter((s) => !s.id.startsWith('hyg-'));
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -41,7 +50,7 @@ export const GalaxyViewport = ({
       sceneRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally run once
+  }, []);
 
   useEffect(() => {
     sceneRef.current?.updateSelection(selectedStarId);
@@ -51,11 +60,27 @@ export const GalaxyViewport = ({
     sceneRef.current?.updateRoute(segments, activeSegmentId);
   }, [segments, activeSegmentId]);
 
+  useEffect(() => {
+    if (aberrationBeta > 1e-6) {
+      sceneRef.current?.setAberrationBeta(aberrationBeta);
+    } else {
+      sceneRef.current?.updateEpoch(epochYears);
+    }
+  }, [epochYears, aberrationBeta]);
+
   return (
     <section className="viewport-section" aria-label={t('sceneTitle')}>
       {/* Overlay star buttons — keyboard + screen reader access */}
       <div className="star-picker" role="listbox" aria-label={t('starPicker')}>
-        {stars.map((star) => {
+        <input
+          type="search"
+          className="star-picker-filter"
+          placeholder={t('starFilterPlaceholder')}
+          aria-label={t('starFilter')}
+          value={pickerFilter}
+          onChange={(e) => setPickerFilter(e.target.value)}
+        />
+        {visibleStars.map((star) => {
           const isSelected = selectedStarId === star.id;
           return (
             <button

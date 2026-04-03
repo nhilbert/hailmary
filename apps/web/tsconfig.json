@@ -8,7 +8,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "types": ["vitest/globals", "@testing-library/jest-dom"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "resolveJsonModule": true
   },
   "include": ["src", "vite.config.ts"]
 }

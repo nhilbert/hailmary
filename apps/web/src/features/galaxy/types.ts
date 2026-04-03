@@ -10,7 +10,16 @@ export interface GalaxyStar {
   posX: number;
   posY: number;
   posZ: number;
-  descriptionKey: string;
+  /** i18n key for the description; ignored when description is set */
+  descriptionKey?: string;
+  /** Inline description string, takes priority over descriptionKey */
+  description?: string;
+  /** Proper motion in Babylon X [pc/yr] — derived from HYG pmra/pmdec/rv */
+  pmX?: number;
+  /** Proper motion in Babylon Y [pc/yr] */
+  pmY?: number;
+  /** Proper motion in Babylon Z [pc/yr] */
+  pmZ?: number;
 }
 
 export type EngineClass = 'ion' | 'warp' | 'quantum' | 'astrophage' | 'hyperdrive';
@@ -31,12 +40,15 @@ export interface ManeuverSegment {
   durationHoursOnboard: number; // Ship-frame duration (time dilation)
   distanceKm: number;
   deltaV: number;
+  shieldRemainingKg: number;
 }
 
 export interface RouteSolveResponse {
   routeId: string;
   totalDurationHours: number;
   totalDeltaV: number;
+  coastFractionUsed: number;
+  shieldRemainingKg: number;
   segments: ManeuverSegment[];
 }
 
@@ -49,4 +61,5 @@ export interface TimelineEvent {
   elapsedHours: number;
   durationHours: number;
   durationHoursOnboard: number;
+  shieldRemainingKg: number;
 }
