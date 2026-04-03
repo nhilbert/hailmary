@@ -48,3 +48,40 @@ def test_route_simulation_returns_leg() -> None:
     data = response.json()
     assert data["legs"][0]["fromStarId"] == "sol"
     assert data["totalDistanceLightYears"] > 0
+
+
+def test_route_solver_returns_relativistic_timeline() -> None:
+    response = client.post(
+        "/routes/solve",
+        json={
+            "ship": {
+                "dryMassKg": 12000,
+                "fuelMassKg": 4000,
+                "thrustNewtons": 900000,
+                "ispSeconds": 350,
+            },
+            "mission": {
+                "distanceKm": 1200000,
+                "coastFraction": 0.5,
+                "maxVelocityMps": 30000,
+                "enableGravityAssist": True,
+                "integrationStepSeconds": 0.5,
+            },
+            "gravityAssistCandidates": [
+                {"name": "Europa", "deltaVBonusMps": 1500},
+                {"name": "Callisto", "deltaVBonusMps": 300},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["gravityAssistChosen"] == "Europa"
+    assert data["totalEarthFrameSeconds"] >= data["totalOnboardSeconds"]
+
+    phases = [segment["phase"] for segment in data["segments"]]
+    assert phases == ["acceleration", "gravity_assist", "coast", "deceleration"]
+
+    decel_segment = data["segments"][-1]
+    assert decel_segment["fuelRemainingKg"] >= 0
+    assert decel_segment["lorentzFactor"] >= 1

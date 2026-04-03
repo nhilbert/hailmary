@@ -52,7 +52,25 @@ pytest apps/api/tests
 - `GET /stars/{id}`: return a single star including galactocentric position and uncertainty vectors.
 - `GET /tiles/{lod}/{x}/{y}/{z}`: fetch binary octree tile chunks for renderer LOD streaming.
 - `POST /routes/simulate`: simulate route between two stars.
+- `POST /routes/solve`: solve staged acceleration/coast/deceleration mission profiles with finite thrust, propellant depletion, optional gravity assists, and relativistic timeline outputs (Earth frame + onboard proper time).
 - `GET /health`: health probe.
+
+
+
+### Trajectory solver payload (`POST /routes/solve`)
+
+Request body includes:
+
+- `ship`: `dryMassKg`, `fuelMassKg`, `thrustNewtons`, `ispSeconds`
+- `mission`: `distanceKm`, `coastFraction`, optional `maxVelocityMps`, `enableGravityAssist`, `integrationStepSeconds`
+- `gravityAssistCandidates`: optional list of `{ name, deltaVBonusMps }`
+
+Response includes phase-by-phase segments (`acceleration`, optional `gravity_assist`, `coast`, `deceleration`) with:
+
+- delta-v and burn duration
+- Earth-frame and onboard-frame elapsed times
+- Lorentz factor and relativistic kinetic energy
+- remaining fuel after each phase
 
 ## Docker Compose
 
