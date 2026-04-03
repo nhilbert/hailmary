@@ -12,11 +12,9 @@ interface ShipParametersFormProps {
 
 const isValid = (params: ShipParameters) =>
   params.cargoMassTons > 0 &&
-  params.cargoMassTons <= 500 &&
   params.maxBurnHours >= 1 &&
-  params.maxBurnHours <= 120 &&
   params.safetyMarginPct >= 0 &&
-  params.safetyMarginPct <= 40;
+  params.safetyMarginPct <= 100;
 
 export const ShipParametersForm = ({ value, onChange, onSubmit, loading }: ShipParametersFormProps) => {
   const { t } = useTranslation();
@@ -66,7 +64,6 @@ export const ShipParametersForm = ({ value, onChange, onSubmit, loading }: ShipP
         id="cargo"
         type="number"
         min={1}
-        max={500}
         value={value.cargoMassTons}
         onChange={(event) => onChange({ ...value, cargoMassTons: Number(event.target.value) })}
       />
@@ -76,7 +73,6 @@ export const ShipParametersForm = ({ value, onChange, onSubmit, loading }: ShipP
         id="burn"
         type="number"
         min={1}
-        max={120}
         value={value.maxBurnHours}
         onChange={(event) => onChange({ ...value, maxBurnHours: Number(event.target.value) })}
       />
@@ -86,7 +82,7 @@ export const ShipParametersForm = ({ value, onChange, onSubmit, loading }: ShipP
         id="margin"
         type="number"
         min={0}
-        max={40}
+        max={100}
         value={value.safetyMarginPct}
         onChange={(event) => onChange({ ...value, safetyMarginPct: Number(event.target.value) })}
       />

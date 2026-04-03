@@ -6,7 +6,7 @@ export interface GalaxyStar {
   constellation: string;
   magnitude: number;
   distanceLightYears: number;
-  /** Real heliocentric equatorial coordinates in light-years */
+  /** Real Babylon-space coordinates in parsecs (Babylon X = HYG x, Y = HYG z, Z = -HYG y) */
   posX: number;
   posY: number;
   posZ: number;
@@ -27,7 +27,9 @@ export interface ManeuverSegment {
   fromStarId: string;
   toStarId: string;
   phase: RoutePhase;
-  durationHours: number;
+  durationHours: number;        // Earth-frame duration
+  durationHoursOnboard: number; // Ship-frame duration (time dilation)
+  distanceKm: number;
   deltaV: number;
 }
 
@@ -45,4 +47,6 @@ export interface TimelineEvent {
   segmentId: string;
   targetStarId: string;
   elapsedHours: number;
+  durationHours: number;
+  durationHoursOnboard: number;
 }

@@ -8,9 +8,11 @@ export const PHASE_COLORS = {
 } as const;
 
 /**
- * Real heliocentric equatorial coordinates (light-years).
- * Derived from Hipparcos/Gaia RA, Dec, parallax.
- * x = d·cos(dec)·cos(ra), y = d·sin(dec), z = −d·cos(dec)·sin(ra)
+ * Real Babylon-space coordinates in parsecs.
+ * Derived from Hipparcos/Gaia RA, Dec, parallax:
+ *   Babylon X =  HYG x  (toward vernal equinox)
+ *   Babylon Y =  HYG z  (toward north celestial pole — Babylon "up")
+ *   Babylon Z = -HYG y
  */
 export const STARS: GalaxyStar[] = [
   {
@@ -28,7 +30,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'Cen',
     magnitude: -0.27,
     distanceLightYears: 4.37,
-    posX: -1.63, posY: -3.82, posZ: 1.36,
+    posX: -0.500, posY: -1.171, posZ: 0.417,
     descriptionKey: 'starDescription.alpha-centauri',
   },
   {
@@ -37,7 +39,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'Oph',
     magnitude: 9.5,
     distanceLightYears: 5.96,
-    posX: -0.06, posY: 0.49, posZ: 5.94,
+    posX: -0.018, posY: 0.150, posZ: 1.821,
     descriptionKey: 'starDescription.barnards-star',
   },
   {
@@ -46,7 +48,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'Leo',
     magnitude: 13.5,
     distanceLightYears: 7.86,
-    posX: -7.50, posY: 0.96, posZ: -2.14,
+    posX: -2.299, posY: 0.294, posZ: -0.656,
     descriptionKey: 'starDescription.wolf-359',
   },
   {
@@ -55,7 +57,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'CMa',
     magnitude: -1.46,
     distanceLightYears: 8.6,
-    posX: -1.61, posY: -2.47, posZ: -8.08,
+    posX: -0.494, posY: -0.757, posZ: -2.477,
     descriptionKey: 'starDescription.sirius',
   },
   {
@@ -64,7 +66,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'Eri',
     magnitude: 3.73,
     distanceLightYears: 10.5,
-    posX: 6.19, posY: -1.73, posZ: -8.29,
+    posX: 1.898, posY: -0.530, posZ: -2.541,
     descriptionKey: 'starDescription.epsilon-eridani',
   },
   {
@@ -73,7 +75,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'Cet',
     magnitude: 3.49,
     distanceLightYears: 11.9,
-    posX: 10.29, posY: -3.27, posZ: -5.03,
+    posX: 3.154, posY: -1.002, posZ: -1.542,
     descriptionKey: 'starDescription.tau-ceti',
   },
   {
@@ -82,7 +84,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'CMi',
     magnitude: 0.34,
     distanceLightYears: 11.46,
-    posX: -4.81, posY: 1.04, posZ: -10.35,
+    posX: -1.474, posY: 0.319, posZ: -3.172,
     descriptionKey: 'starDescription.procyon',
   },
   {
@@ -91,7 +93,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'Cyg',
     magnitude: 5.21,
     distanceLightYears: 11.4,
-    posX: 6.46, posY: 7.13, posZ: 6.11,
+    posX: 1.980, posY: 2.186, posZ: 1.873,
     descriptionKey: 'starDescription.61-cygni',
   },
   {
@@ -100,7 +102,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'Aql',
     magnitude: 0.77,
     distanceLightYears: 16.77,
-    posX: 7.71, posY: 2.58, posZ: 14.67,
+    posX: 2.363, posY: 0.791, posZ: 4.498,
     descriptionKey: 'starDescription.altair',
   },
   {
@@ -109,7 +111,7 @@ export const STARS: GalaxyStar[] = [
     constellation: 'Lyr',
     magnitude: 0.03,
     distanceLightYears: 25.04,
-    posX: 3.13, posY: 15.66, posZ: 19.28,
+    posX: 0.959, posY: 4.802, posZ: 5.911,
     descriptionKey: 'starDescription.vega',
   },
 ];
