@@ -1,9 +1,13 @@
 from fastapi import FastAPI, HTTPException, Query, Response
 
+from physics.trajectory import compute_trajectory
+
 from .models import (
     RouteSimulationLeg,
     RouteSimulationRequest,
     RouteSimulationResponse,
+    SolveTrajectoryRequest,
+    SolveTrajectoryResponse,
     StarDetail,
     StarSearchRequest,
     StarSearchResponse,
@@ -80,4 +84,13 @@ def simulate_route(payload: RouteSimulationRequest) -> RouteSimulationResponse:
         totalEtaHours=eta_hours,
         totalFuelCost=fuel_cost,
         legs=[leg],
+    )
+
+
+@app.post("/routes/solve", response_model=SolveTrajectoryResponse)
+def solve_route(payload: SolveTrajectoryRequest) -> SolveTrajectoryResponse:
+    return compute_trajectory(
+        ship=payload.ship,
+        mission=payload.mission,
+        gravity_assists=payload.gravityAssistCandidates,
     )
