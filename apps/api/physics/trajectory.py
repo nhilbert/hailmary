@@ -227,29 +227,27 @@ def integrate_burn(
 # ── Brachistochrone optimizer ──────────────────────────────────────────────
 
 
-def optimal_coast_fraction(
+def optimal_burn_distances(
     ship: SolveShipParameters,
     total_distance_m: float,
     velocity_limit_mps: float,
     integration_step_s: float,
-) -> float:
-    """Compute the coast fraction that minimises trip time for a given fuel budget.
+) -> tuple[float, float, float, float]:
+    """Compute (accel_distance, coast_distance, decel_distance, coast_fraction).
 
-    Strategy (from reference §3.4):
-    - The brachistochrone optimum is coast=0 (burn all fuel accel+decel, equal split).
-    - If the ship runs out of fuel before covering half the distance, a coast phase is
-      forced by physics (we have no more thrust).
-    - So we simulate the accel half at coast=0 and see how far the fuel takes us.
-      If accel_distance_achieved >= total_distance/2, coast=0 is optimal.
-      Otherwise, the fuel-limited flip point determines the coast fraction.
+    Strategy (reference §3.4):
+    - Each burn leg uses fuelMassKg/2 (symmetric brachistochrone).
+    - Probe the accel leg to find how far half the fuel takes the ship.
+    - Decel gets the same distance (symmetric). Coast fills the remainder.
+    - If half-fuel covers ≥ half the total distance, coast = 0 (pure brachistochrone).
     """
     half_dist = total_distance_m / 2.0
+    half_fuel = ship.fuelMassKg / 2.0
 
-    # Simulate accel-only to see how far fuel gets us
     probe_state = IntegratorState(
         gamma_v=0.0,
-        mass_kg=ship.dryMassKg + ship.fuelMassKg,
-        fuel_kg=ship.fuelMassKg,
+        mass_kg=ship.dryMassKg + half_fuel,
+        fuel_kg=half_fuel,
         shield_kg=0.0,
         earth_time_s=0.0,
         onboard_time_s=0.0,
@@ -267,16 +265,11 @@ def optimal_coast_fraction(
         velocity_limit_mps=velocity_limit_mps,
     )
 
-    accel_achieved = seg.distance_m
-
-    if accel_achieved >= half_dist * 0.999:
-        # Fuel covers the whole accel half — pure brachistochrone, no coast needed
-        return 0.0
-
-    # Ship runs out of fuel before flip point.
-    # Remaining distance after symmetric burn = total - 2 * accel_achieved.
-    coast_distance = max(0.0, total_distance_m - 2.0 * accel_achieved)
-    return coast_distance / total_distance_m
+    accel_dist = seg.distance_m
+    decel_dist = accel_dist  # symmetric
+    coast_dist = max(0.0, total_distance_m - accel_dist - decel_dist)
+    coast_fraction = coast_dist / total_distance_m if total_distance_m > 0 else 0.0
+    return accel_dist, coast_dist, decel_dist, coast_fraction
 
 
 # ── ISM erosion model ──────────────────────────────────────────────────────
@@ -390,34 +383,31 @@ def compute_trajectory(
     )
     integration_step_s = mission.integrationStepSeconds
 
-    # ── Compute optimal coast fraction ────────────────────────────────
-    coast_fraction = optimal_coast_fraction(
+    # ── Compute optimal burn distances (brachistochrone) ─────────────
+    accel_distance, coast_distance, decel_distance, coast_fraction = optimal_burn_distances(
         ship=ship,
         total_distance_m=total_distance_m,
         velocity_limit_mps=velocity_limit_mps,
         integration_step_s=integration_step_s,
     )
 
-    accel_distance = total_distance_m * (1.0 - coast_fraction) / 2.0
-    coast_distance = total_distance_m * coast_fraction
-    decel_distance = total_distance_m - accel_distance - coast_distance
-
     # ── Initial state ─────────────────────────────────────────────────
     shield_kg = ship.shieldMassKg if ship.shieldMassKg is not None else 0.0
+
+    # Split fuel evenly: half for accel, half reserved for decel.
+    # This is the symmetric brachistochrone constraint — each burn leg gets
+    # fuelMassKg/2. Any coast fills the gap between the two legs.
+    half_fuel = ship.fuelMassKg / 2.0
+
     state = IntegratorState(
         gamma_v=0.0,
         mass_kg=ship.dryMassKg + ship.fuelMassKg + shield_kg,
-        fuel_kg=ship.fuelMassKg,
+        fuel_kg=half_fuel,   # accel leg uses only its half
         shield_kg=shield_kg,
         earth_time_s=0.0,
         onboard_time_s=0.0,
     )
 
-    # ISM erosion rate is velocity-dependent; use a representative cruise beta
-    # for a pre-compute. The integrator re-evaluates per step using cruise velocity.
-    # We pass a per-metre rate computed at mid-mission speed as a reasonable average.
-    # The burn integrator itself uses a fixed rate for the burn phase (speeds are
-    # relatively low during accel/decel compared to cruise).
     erosion_rate_accel = ism_erosion_rate(velocity_limit_mps * 0.5)
     erosion_rate_cruise = ism_erosion_rate(velocity_limit_mps)
 
@@ -434,6 +424,9 @@ def compute_trajectory(
         velocity_limit_mps=velocity_limit_mps,
         ism_erosion_rate_kg_per_m=erosion_rate_accel,
     )
+    # Restore the reserved decel fuel after the accel leg completes
+    state.fuel_kg   = half_fuel
+    state.mass_kg   = max(ship.dryMassKg, state.mass_kg) + half_fuel
     segments: list[SegmentResult] = [accel_segment]
 
     # ── Gravity assist ────────────────────────────────────────────────
