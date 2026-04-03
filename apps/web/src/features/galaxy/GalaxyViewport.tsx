@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PHASE_COLORS } from './data';
+import { initGalaxyScene } from '../../scene/bootstrapBabylon';
+import type { GalaxyScene } from '../../scene/bootstrapBabylon';
 import type { GalaxyStar, ManeuverSegment } from './types';
 
 interface GalaxyViewportProps {
@@ -15,14 +17,43 @@ export const GalaxyViewport = ({
   selectedStarId,
   onSelectStar,
   segments,
-  activeSegmentId
+  activeSegmentId,
 }: GalaxyViewportProps) => {
   const { t } = useTranslation();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sceneRef  = useRef<GalaxyScene | null>(null);
 
-  const resolveStar = (id: string) => stars.find((star) => star.id === id);
+  // Initialise Babylon.js once on mount.
+  // stars and onSelectStar are module-level constants and never change.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let api: GalaxyScene | null = null;
+    try {
+      api = initGalaxyScene(canvas, stars, onSelectStar);
+      sceneRef.current = api;
+      api.updateSelection(selectedStarId);
+    } catch {
+      // WebGL unavailable (jsdom in tests) — skip silently
+    }
+    return () => {
+      api?.dispose();
+      sceneRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run once
+
+  useEffect(() => {
+    sceneRef.current?.updateSelection(selectedStarId);
+  }, [selectedStarId]);
+
+  useEffect(() => {
+    sceneRef.current?.updateRoute(segments, activeSegmentId);
+  }, [segments, activeSegmentId]);
 
   return (
-    <section aria-label={t('sceneTitle')}>
+    <section className="viewport-section" aria-label={t('sceneTitle')}>
+      {/* Overlay star buttons — keyboard + screen reader access */}
       <div className="star-picker" role="listbox" aria-label={t('starPicker')}>
         {stars.map((star) => {
           const isSelected = selectedStarId === star.id;
@@ -32,8 +63,12 @@ export const GalaxyViewport = ({
               type="button"
               role="option"
               aria-selected={isSelected}
-              aria-label={isSelected ? t('starOptionSelectedLabel', { name: star.name }) : t('starOptionLabel', { name: star.name })}
-              className={isSelected ? 'star-selected' : ''}
+              aria-label={
+                isSelected
+                  ? t('starOptionSelectedLabel', { name: star.name })
+                  : t('starOptionLabel', { name: star.name })
+              }
+              className={isSelected ? 'star-btn star-selected' : 'star-btn'}
               onClick={() => onSelectStar(star.id)}
             >
               {star.name}
@@ -41,44 +76,7 @@ export const GalaxyViewport = ({
           );
         })}
       </div>
-      <svg viewBox="0 0 100 100" className="route-map" aria-label={t('routeOverlay')} role="img">
-        {segments.map((segment) => {
-          const from = resolveStar(segment.fromStarId);
-          const to = resolveStar(segment.toStarId);
-          if (!from || !to) {
-            return null;
-          }
-          const isActive = segment.id === activeSegmentId;
-
-          return (
-            <line
-              key={segment.id}
-              x1={from.x}
-              y1={from.y}
-              x2={to.x}
-              y2={to.y}
-              stroke={PHASE_COLORS[segment.phase]}
-              strokeWidth={isActive ? 1.8 : 0.9}
-              opacity={isActive ? 1 : 0.55}
-              data-phase={segment.phase}
-            />
-          );
-        })}
-        {stars.map((star) => (
-          <g key={star.id}>
-            <circle
-              cx={star.x}
-              cy={star.y}
-              r={selectedStarId === star.id ? 2.1 : 1.4}
-              className="star-node"
-              onClick={() => onSelectStar(star.id)}
-            />
-            <text x={star.x + 2} y={star.y - 2} fontSize={3}>
-              {star.name}
-            </text>
-          </g>
-        ))}
-      </svg>
+      <canvas ref={canvasRef} className="galaxy-canvas" />
     </section>
   );
 };

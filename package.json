@@ -7,9 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @hailmary/contracts && npm run build -w @hailmary/web",
-    "test": "npm run test -w @hailmary/contracts && npm run test -w @hailmary/web",
-    "lint": "npm run lint -w @hailmary/contracts && npm run lint -w @hailmary/web",
-    "typecheck": "npm run typecheck -w @hailmary/contracts && npm run typecheck -w @hailmary/web"
+    "build": "npm -w @hailmary/contracts run build && npm -w @hailmary/web run build",
+    "test": "npm -w @hailmary/contracts run test && npm -w @hailmary/web run test",
+    "lint": "npm -w @hailmary/contracts run lint && npm -w @hailmary/web run lint",
+    "typecheck": "npm -w @hailmary/contracts run typecheck && npm -w @hailmary/web run typecheck"
   }
 }

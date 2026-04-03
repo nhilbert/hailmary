@@ -50,9 +50,15 @@ export const ShipParametersForm = ({ value, onChange, onSubmit, loading }: ShipP
         value={value.engineClass}
         onChange={(event) => onChange({ ...value, engineClass: event.target.value as ShipParameters['engineClass'] })}
       >
-        <option value="ion">{t('engine.ion')}</option>
-        <option value="warp">{t('engine.warp')}</option>
-        <option value="quantum">{t('engine.quantum')}</option>
+        <optgroup label="Near-future">
+          <option value="ion">{t('engine.ion')}</option>
+          <option value="warp">{t('engine.warp')}</option>
+          <option value="quantum">{t('engine.quantum')}</option>
+        </optgroup>
+        <optgroup label="Sci-fi">
+          <option value="astrophage">{t('engine.astrophage')}</option>
+          <option value="hyperdrive">{t('engine.hyperdrive')}</option>
+        </optgroup>
       </select>
 
       <label htmlFor="cargo">{t('cargoMass')}</label>

@@ -1,138 +1,426 @@
+/* ── Design tokens ─────────────────────────────────────────────────────── */
 :root {
-  font-family: Inter, system-ui, sans-serif;
-  --color-bg: #0b1022;
-  --color-surface: #121a33;
-  --color-border: #6f85c9;
-  --color-text: #f5f8ff;
-  --color-focus: #8fc6ff;
-  --color-phase-departure: #81dbff;
-  --color-phase-transfer: #b39aff;
-  --color-phase-insertion: #8af8c2;
-  --color-phase-coast: #ffd98d;
-  color: var(--color-text);
-  background: var(--color-bg);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+
+  --bg:          #05090f;
+  --surface:     #0b1220;
+  --surface2:    #111c30;
+  --border:      #1a2d52;
+  --border-hi:   #2a4880;
+  --text:        #dce8ff;
+  --text-muted:  #6b82b0;
+  --accent:      #3d8eff;
+  --focus:       #7dbfff;
+
+  --phase-departure: #81dbff;
+  --phase-transfer:  #b39aff;
+  --phase-insertion: #8af8c2;
+  --phase-coast:     #ffd98d;
+
+  color: var(--text);
+  background: var(--bg);
 }
 
-body {
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
   margin: 0;
-  background: var(--color-bg);
-  color: var(--color-text);
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
 }
 
-header,
-main,
-footer,
-nav {
-  padding: 1rem;
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
+/* ── Skip link ─────────────────────────────────────────────────────────── */
 .skip-link {
   position: absolute;
   left: -9999px;
+  z-index: 200;
 }
-
 .skip-link:focus {
-  left: 1rem;
-  top: 1rem;
+  left: 0.75rem;
+  top: 0.75rem;
   background: #fff;
   color: #000;
-  padding: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
 }
 
+/* ── Header ────────────────────────────────────────────────────────────── */
+header[role="banner"] {
+  flex-shrink: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  background: rgba(5, 9, 15, 0.96);
+  border-bottom: 1px solid var(--border);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #aac4ff;
+}
+
+/* ── Main ──────────────────────────────────────────────────────────────── */
+main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  min-height: 0;
+}
+
+/* ── Galaxy layout ─────────────────────────────────────────────────────── */
 .galaxy-layout {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 340px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 860px) {
   .galaxy-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
   }
 }
 
-.route-map {
-  width: 100%;
-  min-height: 340px;
-  border: 1px solid var(--color-border);
-  background: radial-gradient(circle at 20% 20%, #253a6e 5%, #0d1327 70%);
+/* ── 3D Viewport ───────────────────────────────────────────────────────── */
+.viewport-section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg);
 }
 
+.galaxy-canvas {
+  flex: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: none;
+}
+
+/* ── Star picker overlay ───────────────────────────────────────────────── */
 .star-picker {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 10;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: 0.35rem;
+  max-width: calc(100% - 1.2rem);
+}
+
+.star-btn {
+  background: rgba(11, 18, 32, 0.78);
+  color: var(--text);
+  border: 1px solid var(--border-hi);
+  border-radius: 4px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.star-btn:hover {
+  background: rgba(26, 45, 82, 0.88);
+  border-color: var(--accent);
 }
 
 .star-selected {
-  outline: 2px solid var(--color-focus);
+  background: rgba(61, 142, 255, 0.18);
+  border-color: var(--focus);
+  color: var(--focus);
+  font-weight: 600;
 }
 
-.star-node {
-  fill: var(--color-text);
-  cursor: pointer;
-}
-
+/* ── Details panel ─────────────────────────────────────────────────────── */
 .details-panel {
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  background: var(--color-surface);
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hi) transparent;
 }
 
-.route-controls,
+/* Section dividers inside the panel */
+.details-panel > * + * {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Remove double border on nested sections */
+.details-panel > p:first-child,
+.details-panel > h3:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.details-panel h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.details-panel > p strong {
+  font-size: 1rem;
+  color: #b8d0ff;
+}
+
+.details-panel > p:not(:has(strong)) {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0.15rem 0 0;
+}
+
+.details-panel dl {
+  margin: 0.4rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.75rem;
+  row-gap: 0.1rem;
+}
+
+.details-panel dt {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.details-panel dd {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+/* ── Route controls ────────────────────────────────────────────────────── */
+.route-controls {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.route-controls label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── Inputs & selects ──────────────────────────────────────────────────── */
+input, select {
+  width: 100%;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border-hi);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  appearance: auto;
+}
+
+input:focus, select:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* ── Ship form ─────────────────────────────────────────────────────────── */
 .ship-form {
   display: grid;
-  gap: 0.45rem;
-  margin-bottom: 1rem;
+  gap: 0.28rem;
 }
 
+.ship-form label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.ship-form ul[aria-live] {
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.8rem;
+  color: #ff8080;
+}
+
+/* ── Ship presets ──────────────────────────────────────────────────────── */
 .ship-presets {
   display: flex;
-  gap: 0.5rem;
   flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+button {
+  cursor: pointer;
+  border: 1px solid var(--border-hi);
+  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  background: var(--surface2);
+  color: var(--text);
+  transition: background 0.12s, border-color 0.12s;
+}
+
+button:hover {
+  background: var(--border);
+  border-color: var(--accent);
+}
+
+button[type="submit"] {
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.45rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button[type="submit"]:hover   { background: #2d7ef0; }
+button[type="submit"]:disabled { opacity: 0.5; cursor: wait; }
+
+/* ── Mission timeline ──────────────────────────────────────────────────── */
+.timeline { font-size: 0.82rem; }
+
+.timeline label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.timeline input[type="range"] {
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  accent-color: var(--accent);
+  margin: 0.2rem 0;
+}
+
+.timeline > p[aria-live] {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.2rem 0;
 }
 
 .timeline ol {
   padding-left: 1rem;
+  margin: 0.4rem 0 0;
 }
+
+.timeline li { margin: 0.2rem 0; }
 
 .timeline-active {
   font-weight: 700;
+  color: var(--focus);
 }
 
 .phase-dot {
-  width: 0.7rem;
-  height: 0.7rem;
+  width: 0.5rem;
+  height: 0.5rem;
   display: inline-block;
-  border-radius: 999px;
-  margin-right: 0.5rem;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+  vertical-align: middle;
 }
 
+/* ── Scenario presets ──────────────────────────────────────────────────── */
+section[aria-label="Scenario presets"] h3 { margin: 0 0 0.25rem; }
+section[aria-label="Scenario presets"] > p { font-size: 0.78rem; color: var(--text-muted); margin: 0 0 0.4rem; }
+section[aria-label="Scenario presets"] ul  { padding: 0; list-style: none; margin: 0; }
+section[aria-label="Scenario presets"] li  { margin-bottom: 0.6rem; font-size: 0.8rem; }
+section[aria-label="Scenario presets"] li > ul { padding-left: 1rem; list-style: disc; color: var(--text-muted); }
+
+/* ── Footer ────────────────────────────────────────────────────────────── */
+footer[role="contentinfo"] {
+  flex-shrink: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+
+/* ── Keyboard help overlay ─────────────────────────────────────────────── */
+.keyboard-help {
+  position: fixed;
+  bottom: 2rem;
+  right: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  z-index: 100;
+  min-width: 200px;
+}
+
+.keyboard-help h3 { margin: 0 0 0.5rem; font-size: 0.85rem; }
+.keyboard-help ul { margin: 0; padding-left: 0; list-style: none; font-size: 0.82rem; }
+.keyboard-help li { margin: 0.2rem 0; }
+
+kbd {
+  background: var(--surface2);
+  border: 1px solid var(--border-hi);
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+/* ── Status messages ───────────────────────────────────────────────────── */
+p[aria-live]:empty { display: none; }
+
+/* ── Screen-reader only ────────────────────────────────────────────────── */
 .sr-only {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
 
+/* ── Focus ─────────────────────────────────────────────────────────────── */
 *:focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
+/* ── Motion ────────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
   }
 }

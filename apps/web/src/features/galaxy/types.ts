@@ -6,14 +6,17 @@ export interface GalaxyStar {
   constellation: string;
   magnitude: number;
   distanceLightYears: number;
-  x: number;
-  y: number;
-  z: number;
+  /** Real heliocentric equatorial coordinates in light-years */
+  posX: number;
+  posY: number;
+  posZ: number;
   descriptionKey: string;
 }
 
+export type EngineClass = 'ion' | 'warp' | 'quantum' | 'astrophage' | 'hyperdrive';
+
 export interface ShipParameters {
-  engineClass: 'ion' | 'warp' | 'quantum';
+  engineClass: EngineClass;
   cargoMassTons: number;
   maxBurnHours: number;
   safetyMarginPct: number;

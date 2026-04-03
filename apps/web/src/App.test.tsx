@@ -3,26 +3,51 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import './i18n';
 
+// Shape matches SolveTrajectoryResponse from the API (apps/api/app/models.py)
 const mockSolveResponse = {
-  routeId: 'r-1',
-  totalDurationHours: 12,
-  totalDeltaV: 40,
+  totalDistanceKm: 4.13e13,
+  totalEarthFrameSeconds: 43200,
+  totalOnboardSeconds: 43100,
+  totalDeltaVMps: 40000,
+  finalVelocityMps: 100,
+  fuelRemainingKg: 1000,
+  gravityAssistChosen: null,
   segments: [
     {
-      id: 'seg-1',
-      fromStarId: 'sol',
-      toStarId: 'alpha-centauri',
-      phase: 'departure',
-      durationHours: 4,
-      deltaV: 12
+      phase: 'acceleration',
+      distanceKm: 2e13,
+      startVelocityMps: 0,
+      endVelocityMps: 20000,
+      deltaVMps: 20000,
+      burnDurationSeconds: 14400,
+      earthFrameDurationSeconds: 14400,
+      onboardDurationSeconds: 14300,
+      startEarthTimeSeconds: 0,
+      endEarthTimeSeconds: 14400,
+      startOnboardTimeSeconds: 0,
+      endOnboardTimeSeconds: 14300,
+      fuelRemainingKg: 2000,
+      relativisticKineticEnergyJoules: 1e20,
+      lorentzFactor: 1.00001,
+      gravityAssistUsed: null
     },
     {
-      id: 'seg-2',
-      fromStarId: 'alpha-centauri',
-      toStarId: 'sirius',
-      phase: 'transfer',
-      durationHours: 8,
-      deltaV: 28
+      phase: 'deceleration',
+      distanceKm: 2.13e13,
+      startVelocityMps: 20000,
+      endVelocityMps: 100,
+      deltaVMps: 19900,
+      burnDurationSeconds: 28800,
+      earthFrameDurationSeconds: 28800,
+      onboardDurationSeconds: 28700,
+      startEarthTimeSeconds: 14400,
+      endEarthTimeSeconds: 43200,
+      startOnboardTimeSeconds: 14300,
+      endOnboardTimeSeconds: 43000,
+      fuelRemainingKg: 1000,
+      relativisticKineticEnergyJoules: 1e20,
+      lorentzFactor: 1.00001,
+      gravityAssistUsed: null
     }
   ]
 };
@@ -81,14 +106,14 @@ describe('App accessibility and galaxy routing', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Solved route with 2 maneuver segments.')).toBeTruthy();
-      expect(screen.getByText('Current route includes 2 segments and ends at sirius.')).toBeTruthy();
+      expect(screen.getByText('Current route includes 2 segments and ends at alpha-centauri.')).toBeTruthy();
     });
 
     const slider = screen.getByLabelText('Timeline scrubber');
     fireEvent.change(slider, { target: { value: '1' } });
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Transfer: alpha-centauri → sirius/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Insertion: sol → alpha-centauri/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -109,7 +134,7 @@ describe('App accessibility and galaxy routing', () => {
     });
 
     expect(screen.getByDisplayValue('42')).toBeTruthy();
-    expect(screen.getByText('Nearest stellar system with high refuel infrastructure density.')).toBeTruthy();
+    expect(screen.getByText('Nearest stellar system — target of Project Hail Mary.')).toBeTruthy();
     expect(screen.getAllByText(/departure: sol → alpha-centauri/i).length).toBeGreaterThan(0);
   });
 });
