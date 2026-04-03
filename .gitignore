@@ -1,0 +1,10 @@
+node_modules
+__pycache__
+.pytest_cache
+.venv
+dist
+coverage
+apps/web/node_modules
+apps/web/dist
+packages/contracts/node_modules
+packages/contracts/dist

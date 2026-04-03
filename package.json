@@ -1,0 +1,15 @@
+{
+  "name": "hailmary",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @hailmary/contracts && npm run build -w @hailmary/web",
+    "test": "npm run test -w @hailmary/contracts && npm run test -w @hailmary/web",
+    "lint": "npm run lint -w @hailmary/contracts && npm run lint -w @hailmary/web",
+    "typecheck": "npm run typecheck -w @hailmary/contracts && npm run typecheck -w @hailmary/web"
+  }
+}
