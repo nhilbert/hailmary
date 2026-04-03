@@ -77,4 +77,17 @@ describe('App accessibility and galaxy routing', () => {
 
     expect(screen.getByText('Please correct ship parameters before solving the route.')).toBeTruthy();
   });
+
+  it('loads seeded scenario into map focus, ship form, and mission timeline with one click', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Realistic physics profile' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Loaded scenario: Realistic physics profile')).toBeTruthy();
+    });
+
+    expect(screen.getByDisplayValue('42')).toBeTruthy();
+    expect(screen.getByText('Nearest stellar system with high refuel infrastructure density.')).toBeTruthy();
+    expect(screen.getAllByText(/departure: sol → alpha-centauri/i).length).toBeGreaterThan(0);
+  });
 });

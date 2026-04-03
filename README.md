@@ -117,6 +117,11 @@ The web client now includes a galaxy workspace under `apps/web/src/features/gala
 - Route overlay rendering with per-phase maneuver colors (`departure`, `transfer`, `insertion`, `coast`).
 - Mission timeline scrubbing that synchronizes the active scene target and route segment focus.
 - Ship parameter form presets + validation and solver integration through `POST /routes/solve`.
+- Seeded one-click scenario profiles at `apps/web/src/features/scenarios/presets.ts`, including:
+  - A **realistic physics** profile with explicit planning assumptions.
+  - A **fictional drive** profile with clearly marked non-canon disclaimer text.
+
+Mirrored API-side scenario defaults are available at `apps/api/scenarios/defaults.py` for backend parity and future endpoint wiring.
 
 Expected `/routes/solve` response contract used by the UI:
 

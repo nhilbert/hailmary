@@ -6,6 +6,7 @@ import { GalaxyViewport } from './GalaxyViewport';
 import { MissionTimeline } from './MissionTimeline';
 import { ShipParametersForm } from './ShipParametersForm';
 import type { ManeuverSegment, ShipParameters, TimelineEvent } from './types';
+import { SCENARIO_PRESETS } from '../scenarios/presets';
 
 const defaultShip: ShipParameters = {
   engineClass: 'warp',
@@ -44,6 +45,21 @@ export const GalaxyWorkspace = () => {
   const timeline = useMemo(() => buildTimeline(segments), [segments]);
 
   const activeSegmentId = timeline[timelineIndex]?.segmentId ?? null;
+
+  const applyScenario = (scenarioId: string) => {
+    const scenario = SCENARIO_PRESETS.find((entry) => entry.id === scenarioId);
+    if (!scenario) {
+      return;
+    }
+
+    setSelectedStarId(scenario.focusStarId);
+    setRouteStartId(scenario.routeStartId);
+    setRouteEndId(scenario.routeEndId);
+    setShip(scenario.ship);
+    setSegments(scenario.segments);
+    setTimelineIndex(0);
+    setStatus(t('scenarioLoaded', { title: t(scenario.titleKey) }));
+  };
 
   const handleSolve = async () => {
     if (!routeStartId || !routeEndId || routeStartId === routeEndId) {
@@ -110,6 +126,36 @@ export const GalaxyWorkspace = () => {
             ))}
           </select>
         </div>
+
+        <section aria-label={t('scenario.sectionTitle')}>
+          <h3>{t('scenario.sectionTitle')}</h3>
+          <p>{t('scenario.oneClickHint')}</p>
+          <ul>
+            {SCENARIO_PRESETS.map((scenario) => (
+              <li key={scenario.id}>
+                <button
+                  type="button"
+                  onClick={() => applyScenario(scenario.id)}
+                  aria-describedby={`${scenario.id}-details`}
+                >
+                  {t(scenario.titleKey)}
+                </button>
+                <p id={`${scenario.id}-details`}>
+                  {t(scenario.summaryKey)}
+                </p>
+                <p>{t('scenario.assumptionsLabel')}</p>
+                <ul>
+                  {scenario.assumptions.map((assumptionKey) => (
+                    <li key={assumptionKey}>{t(assumptionKey)}</li>
+                  ))}
+                </ul>
+                <p>
+                  <strong>{t('scenario.nonCanonLabel')}</strong> {t(scenario.disclaimer)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         <ShipParametersForm value={ship} onChange={setShip} onSubmit={() => void handleSolve()} loading={solving} />
 
