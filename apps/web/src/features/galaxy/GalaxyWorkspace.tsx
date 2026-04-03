@@ -15,21 +15,6 @@ const defaultShip: ShipParameters = {
   safetyMarginPct: 15
 };
 
-const buildTimeline = (segments: ManeuverSegment[]): TimelineEvent[] => {
-  let elapsed = 0;
-  return segments.map((segment) => {
-    elapsed += segment.durationHours;
-    return {
-      id: `${segment.id}-${elapsed}`,
-      label: `${segment.phase}: ${segment.fromStarId} → ${segment.toStarId}`,
-      phase: segment.phase,
-      segmentId: segment.id,
-      targetStarId: segment.toStarId,
-      elapsedHours: elapsed
-    };
-  });
-};
-
 export const GalaxyWorkspace = () => {
   const { t } = useTranslation();
   const [selectedStarId, setSelectedStarId] = useState(STARS[0].id);
@@ -42,7 +27,25 @@ export const GalaxyWorkspace = () => {
   const [solving, setSolving] = useState(false);
 
   const selectedStar = STARS.find((star) => star.id === selectedStarId) ?? STARS[0];
-  const timeline = useMemo(() => buildTimeline(segments), [segments]);
+
+  const timeline = useMemo<TimelineEvent[]>(() => {
+    let elapsed = 0;
+    return segments.map((segment) => {
+      elapsed += segment.durationHours;
+      return {
+        id: `${segment.id}-${elapsed}`,
+        label: t('timelineSegmentLabel', {
+          phase: t(`phase.${segment.phase}`),
+          from: segment.fromStarId,
+          to: segment.toStarId
+        }),
+        phase: segment.phase,
+        segmentId: segment.id,
+        targetStarId: segment.toStarId,
+        elapsedHours: elapsed
+      };
+    });
+  }, [segments, t]);
 
   const activeSegmentId = timeline[timelineIndex]?.segmentId ?? null;
 
@@ -97,7 +100,7 @@ export const GalaxyWorkspace = () => {
         <p>
           <strong>{selectedStar.name}</strong>
         </p>
-        <p>{selectedStar.description}</p>
+        <p>{t(selectedStar.descriptionKey)}</p>
         <dl>
           <dt>{t('constellation')}</dt>
           <dd>{selectedStar.constellation}</dd>
@@ -170,6 +173,23 @@ export const GalaxyWorkspace = () => {
             }
           }}
         />
+
+        <section className="sr-only" aria-live="polite" aria-atomic="true">
+          <h4>{t('routeSummaryTitle')}</h4>
+          <p>
+            {timeline.length
+              ? t('routeSummaryNow', {
+                  count: timeline.length,
+                  destination: timeline[timeline.length - 1]?.targetStarId
+                })
+              : t('routeSummaryEmpty')}
+          </p>
+          <ol>
+            {timeline.map((event) => (
+              <li key={event.id}>{event.label}</li>
+            ))}
+          </ol>
+        </section>
 
         <p aria-live="polite">{status}</p>
       </aside>

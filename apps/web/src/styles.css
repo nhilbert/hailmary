@@ -1,11 +1,22 @@
 :root {
   font-family: Inter, system-ui, sans-serif;
-  color: #f3f6ff;
-  background: #111529;
+  --color-bg: #0b1022;
+  --color-surface: #121a33;
+  --color-border: #6f85c9;
+  --color-text: #f5f8ff;
+  --color-focus: #8fc6ff;
+  --color-phase-departure: #81dbff;
+  --color-phase-transfer: #b39aff;
+  --color-phase-insertion: #8af8c2;
+  --color-phase-coast: #ffd98d;
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
 body {
   margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 header,
@@ -43,8 +54,8 @@ nav {
 .route-map {
   width: 100%;
   min-height: 340px;
-  border: 1px solid #445;
-  background: radial-gradient(circle at 20% 20%, #1f2d52 5%, #0d1327 70%);
+  border: 1px solid var(--color-border);
+  background: radial-gradient(circle at 20% 20%, #253a6e 5%, #0d1327 70%);
 }
 
 .star-picker {
@@ -55,18 +66,19 @@ nav {
 }
 
 .star-selected {
-  outline: 2px solid #82a7ff;
+  outline: 2px solid var(--color-focus);
 }
 
 .star-node {
-  fill: #f3f6ff;
+  fill: var(--color-text);
   cursor: pointer;
 }
 
 .details-panel {
-  border: 1px solid #445;
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   padding: 0.75rem;
+  background: var(--color-surface);
 }
 
 .route-controls,
@@ -96,4 +108,31 @@ nav {
   display: inline-block;
   border-radius: 999px;
   margin-right: 0.5rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

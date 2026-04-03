@@ -24,18 +24,22 @@ export const GalaxyViewport = ({
   return (
     <section aria-label={t('sceneTitle')}>
       <div className="star-picker" role="listbox" aria-label={t('starPicker')}>
-        {stars.map((star) => (
-          <button
-            key={star.id}
-            type="button"
-            role="option"
-            aria-selected={selectedStarId === star.id}
-            className={selectedStarId === star.id ? 'star-selected' : ''}
-            onClick={() => onSelectStar(star.id)}
-          >
-            {star.name}
-          </button>
-        ))}
+        {stars.map((star) => {
+          const isSelected = selectedStarId === star.id;
+          return (
+            <button
+              key={star.id}
+              type="button"
+              role="option"
+              aria-selected={isSelected}
+              aria-label={isSelected ? t('starOptionSelectedLabel', { name: star.name }) : t('starOptionLabel', { name: star.name })}
+              className={isSelected ? 'star-selected' : ''}
+              onClick={() => onSelectStar(star.id)}
+            >
+              {star.name}
+            </button>
+          );
+        })}
       </div>
       <svg viewBox="0 0 100 100" className="route-map" aria-label={t('routeOverlay')} role="img">
         {segments.map((segment) => {
