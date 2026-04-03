@@ -56,7 +56,18 @@ const es = {
   'starDescription.sol': 'Sistema de origen y punto común de partida para misiones.',
   'starDescription.alpha-centauri': 'Sistema estelar cercano con gran densidad de infraestructura de repostaje.',
   'starDescription.barnards-star': 'Enana roja de baja luminosidad usada con frecuencia en rutas de entrenamiento.',
-  'starDescription.sirius': 'Centro logístico principal con tráfico denso y ventanas de inserción estrictas.'
+  'starDescription.sirius': 'Centro logístico principal con tráfico denso y ventanas de inserción estrictas.',
+  'starDescription.ross-248':       'Enana roja a 10,3 al — la Voyager 1 pasará a 1,7 al en ~40 000 años.',
+  'starDescription.lacaille-9352':  'Enana roja austral, entre las diez estrellas más cercanas al Sol.',
+  'starDescription.ross-128':       'Enana roja tranquila con un planeta del tamaño de la Tierra en zona habitable.',
+  'starDescription.groombridge-34': 'Binaria enana M activa, escala habitual en rutas del entorno solar exterior.',
+  'starDescription.40-eridani':     'Sistema triple — su componente K es la ubicación canónica de Vulcan en Star Trek.',
+  'starDescription.kapteyns-star':  'Estrella antigua del halo (~12 Ga) con dos supertierra candidatas.',
+  'starDescription.82-eridani':     'Una de las estrellas más similares al Sol en 20 al — candidata a mundos habitables.',
+  'starDescription.delta-pavonis':  'Análogo solar más cercano en 20 al; figura en catálogos de objetivos SETI.',
+  'starDescription.fomalhaut':      'Estrella de clase A rodeada de un disco de escombros con al menos un planeta.',
+  'starDescription.gliese-667':     'Sistema triple con tres supertierra potencialmente habitables en el componente C.',
+  'starDescription.pollux':         'Gigante más cercana al Sol; su planeta confirmado Pollux b es un mundo joviano frío.',
 };
 
 export default es;

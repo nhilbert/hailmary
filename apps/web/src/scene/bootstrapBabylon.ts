@@ -26,6 +26,13 @@ const GALAXY_RADIUS_PC   = 13_000; // Milky Way half-diameter
 const GALAXY_MIN_DIST_PC =    500; // exclude inner sphere covered by HYG data
 const DISC_THICKNESS_PC  =    250; // disc half-thickness at the outer rim
 
+// Sol is ~8 120 pc from the galactic centre, toward Sgr A*.
+// Derived from Sgr A*: RA 17h45m40s, Dec −29°00'28", d = 8 120 pc (HYG→Babylon).
+// Babylon X = HYG x, Y = HYG z, Z = −HYG y.
+const GC_OFFSET_X =  -444; // parsecs: galactic centre relative to Sol
+const GC_OFFSET_Y = -3938;
+const GC_OFFSET_Z =  7088;
+
 const SOL_COLOR    = new Color3(1.00, 0.90, 0.50);
 const STAR_COLOR   = new Color3(0.65, 0.82, 1.00);
 const SELECT_COLOR = new Color3(1.00, 1.00, 0.60);
@@ -49,82 +56,131 @@ function generateGalaxyPoints(count: number): { positions: Float32Array; colors:
   const colors    = new Float32Array(count * 4);
 
   const rand  = () => Math.random();
-  const randN = () => (rand() + rand() + rand() - 1.5) / 1.5; // approx normal
+  // Box-Muller Gaussian N(0,1)
+  const randG = () => Math.sqrt(-2 * Math.log(1 - rand() + 1e-10)) * Math.cos(2 * Math.PI * rand());
 
-  // 4 spiral arms: [startAngle, tightness]
-  const arms = [
-    [0,             0.30],
-    [Math.PI,       0.30],
-    [Math.PI / 2,   0.28],
-    [1.5 * Math.PI, 0.28],
-  ];
+  // 4 spiral arms: [startAngle]
+  // Primary arms (0,1) align with the bar and originate at its endpoints.
+  // Secondary arms (2,3) start closer to the centre for a 4-arm appearance.
+  const armAngles  = [0, Math.PI, Math.PI / 2, 1.5 * Math.PI];
+  const armTMin    = [0.27, 0.27, 0.08, 0.08]; // normalised start radius per arm
+
+  // Logarithmic spiral pitch: b = tan(pitch_angle).
+  // Milky Way arms have ~11° pitch → b ≈ 0.194.
+  const LOG_SPIRAL_B = 0.194;
+
+  // Exponential disc scale length: ~3 500 pc → normalised 3500/13000 ≈ 0.269
+  const DISC_SCALE = 0.269;
 
   let written = 0;
   let attempts = 0;
-  const maxAttempts = count * 4;
+  const maxAttempts = count * 6;
 
   while (written < count && attempts < maxAttempts) {
     attempts++;
     const type = rand();
-    let nx: number, ny: number, nz: number; // normalised [-1, 1]
+    let nx: number, ny: number, nz: number; // normalised, galaxy-centred
     let brightness: number;
-    let hue: number; // 0=blue, 0.5=white, 1=yellow-red
+    let hue: number; // 0 = blue, 0.5 = white, 1 = yellow-red
 
-    if (type < 0.12) {
-      // Central bulge — warm dense ellipsoid
-      const r     = Math.pow(rand(), 0.5) * 0.20;
+    if (type < 0.09) {
+      // ── Central bulge ────────────────────────────────────────────────
+      // Sérsic-like: exponential profile from centre, spheroidal flattening.
+      const r     = Math.min(-0.10 * Math.log(1 - rand() * 0.9999), 0.22);
       const theta = rand() * Math.PI * 2;
       const phi   = Math.acos(2 * rand() - 1);
       nx = r * Math.sin(phi) * Math.cos(theta);
-      ny = r * Math.cos(phi) * 0.35;
+      ny = r * Math.cos(phi) * 0.40;    // flattened vertically
       nz = r * Math.sin(phi) * Math.sin(theta);
-      brightness = 0.55 + rand() * 0.45;
-      hue = 1;
+      brightness = (0.45 + rand() * 0.55) * Math.exp(-r / 0.10);
+      hue = 0.85 + rand() * 0.15;       // warm old stars
 
-    } else if (type < 0.72) {
-      // Spiral arms
-      const arm      = arms[Math.floor(rand() * arms.length)];
-      const armAngle = arm[0];
-      const tight    = arm[1];
-      const t        = Math.pow(rand(), 0.55) * 0.9;
-      const angle    = armAngle + t * Math.PI * 2.5 * tight;
-      const spread   = 0.03 + t * 0.10;
-      nx = (t * 0.9 + randN() * spread) * Math.cos(angle);
-      nz = (t * 0.9 + randN() * spread) * Math.sin(angle);
-      ny = randN() * 0.012 * (1 - t * 0.5);
-      brightness = (1 - t * 0.5) * (0.35 + rand() * 0.65);
-      hue = t < 0.3 ? 0 : 0.5;
+    } else if (type < 0.13) {
+      // ── Galactic bar ─────────────────────────────────────────────────
+      // Gaussian cross-section so edges fade naturally; tapers at endpoints.
+      const s     = (rand() - 0.5);
+      const absS  = Math.abs(s);
+      const taper = Math.max(0, 1.0 - absS * 1.8);
+      const sigmaZ = 0.060 * taper;   // σ_z ≈ 780 pc at centre, tapers to 0
+      const sigmaY = 0.006 * taper;   // σ_y ≈  78 pc  (thin disc layer)
+      nx = s * 0.56 + randG() * 0.012;
+      ny = randG() * sigmaY;
+      nz = randG() * sigmaZ;
+      brightness = (0.35 + rand() * 0.45) * (0.4 + taper * 0.6);
+      hue = 0.65 + rand() * 0.25;
+
+    } else if (type < 0.73) {
+      // ── Spiral arms ──────────────────────────────────────────────────
+      // Logarithmic spiral: angle = angle0 + ln(r/r0) / b  (constant pitch).
+      // Gaussian transverse profile replaces uniform band.
+      // Periodic brightness envelope mimics HII-region clumping.
+      const armIndex = Math.floor(rand() * armAngles.length);
+      const armAngle = armAngles[armIndex];
+      const tMin     = armTMin[armIndex];
+      const t        = tMin + Math.pow(rand(), 0.55) * (0.9 - tMin);
+
+      const logArg = Math.max(t / tMin, 1 + 1e-9);
+      const angle  = armAngle + Math.log(logArg) / LOG_SPIRAL_B;
+
+      // Gaussian arm width: σ grows slightly with radius (arms broaden outward)
+      const sigmaArm = (0.018 + t * 0.040);
+      const radial   = t * 0.92 + randG() * sigmaArm;
+
+      nx = radial * Math.cos(angle);
+      nz = radial * Math.sin(angle);
+      ny = randG() * 0.010 * (1 - t * 0.45); // thin disc; thicker at centre
+
+      // Clumping: periodic knots along arc-length simulate star-forming regions.
+      // Phase offset per arm prevents all arms from brightening at the same angle.
+      const arcPhase  = Math.log(logArg) * 5.5 + armIndex * 0.9;
+      const clumpEnv  = 0.45 + 0.55 * Math.pow(Math.abs(Math.sin(arcPhase)), 0.4);
+      brightness = (1 - t * 0.45) * (0.30 + rand() * 0.70) * clumpEnv;
+      hue = t < 0.25 ? 0 + rand() * 0.15 : 0.35 + rand() * 0.20; // blue→white
+
+    } else if (type < 0.98) {
+      // ── Exponential disc ─────────────────────────────────────────────
+      // Exponential radial profile (denser toward centre) + Gaussian vertical.
+      const r     = Math.min(-DISC_SCALE * Math.log(1 - rand() * 0.9995), 0.95);
+      const theta = rand() * Math.PI * 2;
+      nx = r * Math.cos(theta) + randG() * 0.012;
+      nz = r * Math.sin(theta) + randG() * 0.012;
+      ny = randG() * 0.016 * Math.exp(-r / (DISC_SCALE * 2)); // thicker at centre
+      brightness = (0.08 + rand() * 0.22) * Math.exp(-r / 0.55);
+      hue = 0.45 + rand() * 0.50;
 
     } else {
-      // Disc halo — diffuse background
-      const r     = Math.pow(rand(), 0.4) * 0.95;
+      // ── Stellar halo ──────────────────────────────────────────────────
+      // Sparse, old stars in a spheroidal halo above/below the disc.
+      const r     = Math.min(-0.30 * Math.log(1 - rand() * 0.9999), 0.90);
       const theta = rand() * Math.PI * 2;
-      nx = r * Math.cos(theta) + randN() * 0.04;
-      nz = r * Math.sin(theta) + randN() * 0.04;
-      ny = randN() * 0.020;
-      brightness = 0.12 + rand() * 0.30;
-      hue = 0.5 + rand() * 0.5;
+      const phi   = Math.acos(2 * rand() - 1);
+      nx = r * Math.sin(phi) * Math.cos(theta);
+      ny = r * Math.cos(phi) * 0.65; // more vertically extended than the disc
+      nz = r * Math.sin(phi) * Math.sin(theta);
+      brightness = (0.06 + rand() * 0.14) * Math.exp(-r / 0.40);
+      hue = 0.65 + rand() * 0.30; // old, reddish-yellow
     }
 
-    // Scale to parsecs
-    const scaledX = nx * GALAXY_RADIUS_PC;
-    const scaledY = ny * GALAXY_RADIUS_PC * (DISC_THICKNESS_PC / GALAXY_RADIUS_PC / 0.012);
-    const scaledZ = nz * GALAXY_RADIUS_PC;
+    // Scale to parsecs and apply galactic-centre offset so Sol sits at the
+    // correct position in the Orion Arm (~8 120 pc from the centre).
+    const scaledX = nx * GALAXY_RADIUS_PC + GC_OFFSET_X;
+    const scaledY = ny * GALAXY_RADIUS_PC * (DISC_THICKNESS_PC / GALAXY_RADIUS_PC / 0.012) + GC_OFFSET_Y;
+    const scaledZ = nz * GALAXY_RADIUS_PC + GC_OFFSET_Z;
 
-    // Exclude inner sphere (covered by HYG point cloud)
-    const dist2 = scaledX * scaledX + scaledY * scaledY + scaledZ * scaledZ;
-    if (dist2 < GALAXY_MIN_DIST_PC * GALAXY_MIN_DIST_PC) continue;
+    // Exclude the local neighbourhood around Sol (origin); covered by clickable stars.
+    const solDist2 = scaledX * scaledX + scaledY * scaledY + scaledZ * scaledZ;
+    if (solDist2 < GALAXY_MIN_DIST_PC * GALAXY_MIN_DIST_PC) continue;
 
     positions[written * 3]     = scaledX;
     positions[written * 3 + 1] = scaledY;
     positions[written * 3 + 2] = scaledZ;
 
-    const r = Math.min(1, brightness * (0.55 + hue * 0.55));
-    const g = Math.min(1, brightness * (0.65 + hue * 0.10));
-    const b = Math.min(1, brightness * (1.00 - hue * 0.50));
-    colors[written * 4]     = r;
-    colors[written * 4 + 1] = g;
-    colors[written * 4 + 2] = b;
+    const rc = Math.min(1, brightness * (0.55 + hue * 0.55));
+    const gc = Math.min(1, brightness * (0.65 + hue * 0.10));
+    const bc = Math.min(1, brightness * (1.00 - hue * 0.50));
+    colors[written * 4]     = rc;
+    colors[written * 4 + 1] = gc;
+    colors[written * 4 + 2] = bc;
     colors[written * 4 + 3] = 1;
 
     written++;
@@ -258,7 +314,7 @@ export function initGalaxyScene(
   // ── Procedural background galaxy ─────────────────────────────────
   // Covers the outer Milky Way structure beyond HYG catalogue range.
   // Replaced by the real HYG point cloud once /stars.bin has loaded.
-  const STAR_COUNT = 500_000;
+  const STAR_COUNT = 1_000_000;
   const { positions, colors } = generateGalaxyPoints(STAR_COUNT);
   const proceduralMesh = buildPointCloudMesh('galaxy', positions, colors, scene, 1.5);
 
