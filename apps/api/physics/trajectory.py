@@ -155,20 +155,26 @@ def _integrate_burn_const_accel(
         if state.fuel_kg <= 0 or state.mass_kg <= dry_mass_kg:
             break
 
-        # Time until fuel is exhausted (exact analytic result)
-        t_fuel = isp_seconds * math.log(state.mass_kg / dry_mass_kg) / proper_accel_g
+        # Remaining PROPER burn time until fuel exhaustion (analytic).
+        # The mass equation uses proper time: m(τ) = m₀·exp(−a_g·τ/isp).
+        # Convert to earth-frame time using current Lorentz factor so we can
+        # compare it directly with dt_s (which is an earth-frame quantity).
+        gamma_cur = lorentz_factor(velocity_from_gamma_v(state.gamma_v))
+        t_fuel_proper = isp_seconds * math.log(state.mass_kg / dry_mass_kg) / proper_accel_g
+        t_fuel_earth = t_fuel_proper * gamma_cur   # dt_earth = dτ · γ
 
-        # Time until velocity cap or zero-velocity floor
+        # Time until velocity cap or zero-velocity floor (earth-frame)
         if direction > 0:
             t_vcap = max(0.0, (velocity_limit_gv - state.gamma_v) / a_mps2)
         else:
             t_vcap = state.gamma_v / a_mps2 if a_mps2 > 0 else float('inf')
 
-        actual_dt = min(dt_s, t_fuel, t_vcap)
+        actual_dt = min(dt_s, t_fuel_earth, t_vcap)
         if actual_dt <= 0:
             break
 
-        # γv advances exactly linearly (definition of constant proper accel)
+        # γv advances exactly linearly in EARTH time (definition of constant proper accel:
+        # d(γv)/dt_earth = F/m = a_proper = const, independent of γ)
         new_gamma_v = state.gamma_v + direction * a_mps2 * actual_dt
         if direction > 0:
             new_gamma_v = min(new_gamma_v, velocity_limit_gv)
@@ -190,13 +196,13 @@ def _integrate_burn_const_accel(
             else:
                 new_gamma_v = max(new_gamma_v, 0.0)
 
-        # Mass decays exponentially (exact)
-        mass_after = state.mass_kg * math.exp(-proper_accel_g * actual_dt / isp_seconds)
-        fuel_used = state.mass_kg - mass_after
-
-        # Proper time: dτ = dt / γ, using midpoint γ
+        # Proper time elapsed this step: dτ = dt_earth / γ_midpoint
         gamma_mid = lorentz_factor(v_mid)
-        d_onboard = actual_dt / gamma_mid if gamma_mid > 0 else actual_dt
+        dt_proper = actual_dt / gamma_mid if gamma_mid > 0 else actual_dt
+
+        # Mass decays with PROPER time (relativistic Tsiolkovsky)
+        mass_after = state.mass_kg * math.exp(-proper_accel_g * dt_proper / isp_seconds)
+        fuel_used = state.mass_kg - mass_after
 
         # ISM erosion
         shield_eroded = ism_erosion_rate_kg_per_m * step_dist
@@ -208,7 +214,7 @@ def _integrate_burn_const_accel(
         state.mass_kg = max(dry_mass_kg, mass_after)
         state.gamma_v = new_gamma_v
         state.earth_time_s += actual_dt
-        state.onboard_time_s += d_onboard
+        state.onboard_time_s += dt_proper
 
     final_v = state.velocity_mps
     segment = SegmentResult(
@@ -521,26 +527,50 @@ def compute_trajectory(
     integration_step_s = mission.integrationStepSeconds
 
     # ── Compute optimal burn distances (brachistochrone) ─────────────
-    accel_distance, coast_distance, decel_distance, coast_fraction = optimal_burn_distances(
-        ship=ship,
-        total_distance_m=total_distance_m,
-        velocity_limit_mps=velocity_limit_mps,
-        integration_step_s=integration_step_s,
-        proper_accel_g=proper_accel_g,
-    )
-
-    # ── Initial state ─────────────────────────────────────────────────
     shield_kg = ship.shieldMassKg if ship.shieldMassKg is not None else 0.0
 
-    # Split fuel evenly: half for accel, half reserved for decel.
-    # This is the symmetric brachistochrone constraint — each burn leg gets
-    # fuelMassKg/2. Any coast fills the gap between the two legs.
-    half_fuel = ship.fuelMassKg / 2.0
+    if proper_accel_g > 0.0:
+        # Constant proper-acceleration: trajectory is mass-independent, so the
+        # brachistochrone is pure half/half and no coast is needed.  Compute the
+        # asymmetric fuel split analytically (accel leg carries decel fuel, so
+        # it burns R_half× more propellant than the decel leg).
+        payload_kg = ship.dryMassKg + shield_kg
+        result = _brachistochrone_const_accel(
+            payload_kg=payload_kg,
+            proper_accel_g=proper_accel_g,
+            isp_seconds=ship.ispSeconds,
+            total_distance_m=total_distance_m,
+            mass_ratio_limit=1e18,  # already validated upstream
+        )
+        if result is not None:
+            _, accel_fuel, decel_fuel, _ = result
+        else:
+            # Fallback: symmetric split (should not happen if upstream validated)
+            accel_fuel = ship.fuelMassKg / 2.0
+            decel_fuel = ship.fuelMassKg / 2.0
+        accel_distance = total_distance_m / 2.0
+        coast_distance = 0.0
+        decel_distance = total_distance_m / 2.0
+        coast_fraction = 0.0
+        # Effective dry mass for the accel leg = payload + decel fuel (what remains after burn)
+        accel_dry_mass_kg = payload_kg + decel_fuel
+    else:
+        accel_distance, coast_distance, decel_distance, coast_fraction = optimal_burn_distances(
+            ship=ship,
+            total_distance_m=total_distance_m,
+            velocity_limit_mps=velocity_limit_mps,
+            integration_step_s=integration_step_s,
+            proper_accel_g=0.0,
+        )
+        accel_fuel = ship.fuelMassKg / 2.0
+        decel_fuel = ship.fuelMassKg / 2.0
+        accel_dry_mass_kg = ship.dryMassKg
 
+    # ── Initial state ─────────────────────────────────────────────────
     state = IntegratorState(
         gamma_v=0.0,
         mass_kg=ship.dryMassKg + ship.fuelMassKg + shield_kg,
-        fuel_kg=half_fuel,   # accel leg uses only its half
+        fuel_kg=accel_fuel,
         shield_kg=shield_kg,
         earth_time_s=0.0,
         onboard_time_s=0.0,
@@ -556,16 +586,16 @@ def compute_trajectory(
         distance_target_m=accel_distance,
         thrust_newtons=ship.thrustNewtons,
         isp_seconds=ship.ispSeconds,
-        dry_mass_kg=ship.dryMassKg,
+        dry_mass_kg=accel_dry_mass_kg,
         direction=1.0,
         dt_s=integration_step_s,
         velocity_limit_mps=velocity_limit_mps,
         ism_erosion_rate_kg_per_m=erosion_rate_accel,
         proper_accel_g=proper_accel_g,
     )
-    # Restore the reserved decel fuel after the accel leg completes
-    state.fuel_kg   = half_fuel
-    state.mass_kg   = max(ship.dryMassKg, state.mass_kg) + half_fuel
+    # After the accel leg the ship carries only decel fuel; set state accordingly.
+    state.fuel_kg = decel_fuel
+    state.mass_kg = max(ship.dryMassKg + shield_kg, state.mass_kg)
     segments: list[SegmentResult] = [accel_segment]
 
     # ── Gravity assist ────────────────────────────────────────────────
@@ -709,6 +739,47 @@ def _estimate_integration_step(burn_mass_kg: float, thrust_n: float, isp_s: floa
     return max(1.0, min(86_400.0, burn_s / 2_000.0))
 
 
+def _brachistochrone_const_accel(
+    payload_kg: float,
+    proper_accel_g: float,
+    isp_seconds: float,
+    total_distance_m: float,
+    mass_ratio_limit: float,
+) -> tuple[float, float, float, float] | None:
+    """Analytic brachistochrone for a constant proper-acceleration drive.
+
+    For drives where F(t) = a·m(t), the trajectory shape (position vs time) is
+    independent of mass — only proper acceleration and time matter.  The mass
+    ratio is exp(a_g · τ / isp_s) where the g₀ factors cancel.
+
+    The symmetric brachistochrone requires an *asymmetric* fuel split: the accel
+    leg starts heavier (carrying decel fuel), so it burns R_half× more propellant.
+
+    Returns (total_fuel_kg, accel_fuel_kg, decel_fuel_kg, tau_half_s), or None if
+    the required mass ratio exceeds mass_ratio_limit.
+    """
+    a_mps2 = proper_accel_g * STANDARD_GRAVITY_MPS2
+    half_dist = total_distance_m / 2.0
+
+    # Analytic proper time to cover half_dist at constant proper acceleration:
+    #   x(τ) = (c²/a)·(cosh(aτ/c) − 1)  →  aτ/c = acosh(1 + x·a/c²)
+    tau_half = (SPEED_OF_LIGHT_MPS / a_mps2) * math.acosh(
+        1.0 + half_dist * a_mps2 / SPEED_OF_LIGHT_MPS**2
+    )
+
+    # Mass ratio per half-trip leg: m(τ) = m₀·exp(−a_g·τ/isp_s)  (g₀ cancels)
+    R_half = math.exp(proper_accel_g * tau_half / isp_seconds)
+    if R_half**2 > mass_ratio_limit:
+        return None
+
+    # Asymmetric fuel split: accel leg carries decel fuel as dead weight.
+    #   decel_fuel = payload·(R_half − 1)          [mass to carry through decel]
+    #   accel_fuel = payload·R_half·(R_half − 1)   [start heavier by R_half factor]
+    decel_fuel = payload_kg * (R_half - 1.0)
+    accel_fuel = payload_kg * R_half * (R_half - 1.0)
+    return accel_fuel + decel_fuel, accel_fuel, decel_fuel, tau_half
+
+
 def compute_required_fuel_kg(
     dry_mass_kg: float,
     thrust_newtons: float,
@@ -724,7 +795,25 @@ def compute_required_fuel_kg(
     Returns the minimum fuel in kg required to cover *total_distance_m* with no
     coast phase.  If even the mass-ratio limit is insufficient, returns the
     maximum allowed fuel (caller should flag as infeasible coast trajectory).
+
+    For constant proper-acceleration drives the trajectory is mass-independent,
+    so an analytic solution replaces the binary search.
     """
+    if proper_accel_g > 0.0:
+        payload_kg = dry_mass_kg + shield_mass_kg
+        result = _brachistochrone_const_accel(
+            payload_kg=payload_kg,
+            proper_accel_g=proper_accel_g,
+            isp_seconds=isp_seconds,
+            total_distance_m=total_distance_m,
+            mass_ratio_limit=mass_ratio_limit,
+        )
+        if result is None:
+            # Signal infeasibility: return maximum allowed fuel
+            return dry_mass_kg * (mass_ratio_limit - 1.0)
+        total_fuel, _, _, _ = result
+        return total_fuel
+
     max_fuel = dry_mass_kg * (mass_ratio_limit - 1.0)
     coarse_step = _estimate_integration_step(max_fuel / 2, thrust_newtons, isp_seconds)
 
@@ -820,8 +909,17 @@ def solve_by_spec(request: SolveBySpecRequest) -> SolveBySpecResponse:
             ),
         )
 
-    # Fine-resolution integration step for the actual trajectory
-    fine_step = _estimate_integration_step(fuel_kg / 2, thrust_newtons, isp_seconds)
+    # Fine-resolution integration step for the actual trajectory.
+    # For constant proper-accel drives, use the analytic proper time (not nominal thrust).
+    if spec.constant_proper_accel:
+        a_mps2 = request.maxAccelG * STANDARD_GRAVITY_MPS2
+        half_dist = total_distance_m / 2.0
+        tau_half = (SPEED_OF_LIGHT_MPS / a_mps2) * math.acosh(
+            1.0 + half_dist * a_mps2 / SPEED_OF_LIGHT_MPS**2
+        )
+        fine_step = max(1.0, min(86_400.0, 2.0 * tau_half / 2_000.0))
+    else:
+        fine_step = _estimate_integration_step(fuel_kg / 2, thrust_newtons, isp_seconds)
 
     ship = SolveShipParameters(
         dryMassKg=request.dryMassKg,
