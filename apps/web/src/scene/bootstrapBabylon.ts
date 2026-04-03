@@ -26,12 +26,22 @@ const GALAXY_RADIUS_PC   = 13_000; // Milky Way half-diameter
 const GALAXY_MIN_DIST_PC =    500; // exclude inner sphere covered by HYG data
 const DISC_THICKNESS_PC  =    250; // disc half-thickness at the outer rim
 
-// Sol is ~8 120 pc from the galactic centre, toward Sgr A*.
-// Derived from Sgr A*: RA 17h45m40s, Dec −29°00'28", d = 8 120 pc (HYG→Babylon).
-// Babylon X = HYG x, Y = HYG z, Z = −HYG y.
-const GC_OFFSET_X =  -444; // parsecs: galactic centre relative to Sol
-const GC_OFFSET_Y = -3938;
-const GC_OFFSET_Z =  7088;
+// Sol is ~8 120 pc from the galactic centre in the Orion Arm.
+// The galaxy is generated in galactic Cartesian coordinates centred on Sol:
+//   gx → toward GC (l=0°, b=0°)
+//   gy → toward l=90°, b=0°
+//   gz → toward NGP (b=90°)
+// Then rotated into Babylon equatorial space via the IAU galactic→equatorial
+// matrix (Hipparcos Vol.1 §1.5.3), with the Babylon axis remap:
+//   Babylon X = HYG x,  Babylon Y = HYG z,  Babylon Z = −HYG y.
+const GC_DIST_PC = 8_120;
+
+// Galactic→Babylon rotation (row i · [gx,gy,gz] = Babylon component i).
+const GAL_TO_BABYLON = [
+  [-0.0548755604, +0.4941094279, -0.8676661490],  // → Babylon X
+  [-0.4838350155, +0.7469822445, +0.4559837762],  // → Babylon Y
+  [+0.8734370902, +0.4448296300, +0.1980763734],  // → Babylon Z
+] as const;
 
 const SOL_COLOR    = new Color3(1.00, 0.90, 0.50);
 const STAR_COLOR   = new Color3(0.65, 0.82, 1.00);
@@ -71,6 +81,10 @@ function generateGalaxyPoints(count: number): { positions: Float32Array; colors:
 
   // Exponential disc scale length: ~3 500 pc → normalised 3500/13000 ≈ 0.269
   const DISC_SCALE = 0.269;
+
+  // Vertical scale: maps normalised ny (~0.01 for disc stars) → parsecs.
+  // 0.012 is the reference σ so that 1σ ≈ DISC_THICKNESS_PC.
+  const VERT_SCALE = DISC_THICKNESS_PC / 0.012;
 
   let written = 0;
   let attempts = 0;
@@ -161,11 +175,17 @@ function generateGalaxyPoints(count: number): { positions: Float32Array; colors:
       hue = 0.65 + rand() * 0.30; // old, reddish-yellow
     }
 
-    // Scale to parsecs and apply galactic-centre offset so Sol sits at the
-    // correct position in the Orion Arm (~8 120 pc from the centre).
-    const scaledX = nx * GALAXY_RADIUS_PC + GC_OFFSET_X;
-    const scaledY = ny * GALAXY_RADIUS_PC * (DISC_THICKNESS_PC / GALAXY_RADIUS_PC / 0.012) + GC_OFFSET_Y;
-    const scaledZ = nz * GALAXY_RADIUS_PC + GC_OFFSET_Z;
+    // Convert to Sol-centred galactic Cartesian (parsecs).
+    // (nx,nz) are in the galactic disc plane; (ny) is perpendicular (toward NGP).
+    // Adding GC_DIST_PC shifts from GC-centred to Sol-centred so Sol = origin.
+    const gx = nx * GALAXY_RADIUS_PC + GC_DIST_PC;
+    const gy = nz * GALAXY_RADIUS_PC;
+    const gz = ny * VERT_SCALE;
+
+    // Rotate galactic → Babylon space.
+    const scaledX = GAL_TO_BABYLON[0][0] * gx + GAL_TO_BABYLON[0][1] * gy + GAL_TO_BABYLON[0][2] * gz;
+    const scaledY = GAL_TO_BABYLON[1][0] * gx + GAL_TO_BABYLON[1][1] * gy + GAL_TO_BABYLON[1][2] * gz;
+    const scaledZ = GAL_TO_BABYLON[2][0] * gx + GAL_TO_BABYLON[2][1] * gy + GAL_TO_BABYLON[2][2] * gz;
 
     // Exclude the local neighbourhood around Sol (origin); covered by clickable stars.
     const solDist2 = scaledX * scaledX + scaledY * scaledY + scaledZ * scaledZ;

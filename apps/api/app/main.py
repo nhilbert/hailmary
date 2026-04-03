@@ -1,11 +1,13 @@
 from fastapi import FastAPI, HTTPException, Query, Response
 
-from physics.trajectory import compute_trajectory
+from physics.trajectory import compute_trajectory, solve_by_spec
 
 from .models import (
     RouteSimulationLeg,
     RouteSimulationRequest,
     RouteSimulationResponse,
+    SolveBySpecRequest,
+    SolveBySpecResponse,
     SolveTrajectoryRequest,
     SolveTrajectoryResponse,
     StarDetail,
@@ -94,3 +96,8 @@ def solve_route(payload: SolveTrajectoryRequest) -> SolveTrajectoryResponse:
         mission=payload.mission,
         gravity_assists=payload.gravityAssistCandidates,
     )
+
+
+@app.post("/routes/solve-by-spec", response_model=SolveBySpecResponse)
+def solve_route_by_spec(payload: SolveBySpecRequest) -> SolveBySpecResponse:
+    return solve_by_spec(payload)

@@ -5,13 +5,12 @@ import { ALL_STARS } from './data';
 import { GalaxyViewport } from './GalaxyViewport';
 import { MissionTimeline } from './MissionTimeline';
 import { ShipParametersForm } from './ShipParametersForm';
-import type { ManeuverSegment, ShipParameters, TimelineEvent } from './types';
+import type { FuelEstimate, ManeuverSegment, ShipParameters, TimelineEvent } from './types';
 
 const defaultShip: ShipParameters = {
-  engineClass: 'warp',
-  cargoMassTons: 60,
-  maxBurnHours: 24,
-  safetyMarginPct: 15
+  engineClass: 'astrophage',
+  dryMassTons: 200,
+  maxAccelG: 1.5,
 };
 
 export const GalaxyWorkspace = () => {
@@ -27,6 +26,8 @@ export const GalaxyWorkspace = () => {
   const [solving, setSolving] = useState(false);
   const [coastFractionUsed, setCoastFractionUsed] = useState<number | undefined>(undefined);
   const [initialShieldKg, setInitialShieldKg] = useState<number | undefined>(undefined);
+  const [fuelEstimate, setFuelEstimate] = useState<FuelEstimate | null>(null);
+  const [infeasibilityReason, setInfeasibilityReason] = useState<string | null>(null);
   const [epochYears, setEpochYears] = useState(0);
   const [aberrationBeta, setAberrationBeta] = useState(0);
 
@@ -67,13 +68,22 @@ export const GalaxyWorkspace = () => {
 
     setSolving(true);
     setStatus('');
+    setInfeasibilityReason(null);
+    setFuelEstimate(null);
     try {
       const response = await solveRoute({ startStarId: routeStartId, endStarId: routeEndId, ship });
-      setSegments(response.segments);
-      setCoastFractionUsed(response.coastFractionUsed);
-      setInitialShieldKg(response.segments[0]?.shieldRemainingKg);
-      setTimelineIndex(0);
-      setStatus(t('routeSolved', { count: response.segments.length }));
+      if (response.infeasibilityReason) {
+        setInfeasibilityReason(response.infeasibilityReason);
+        setSegments([]);
+        setStatus('');
+      } else {
+        setSegments(response.segments);
+        setCoastFractionUsed(response.coastFractionUsed);
+        setInitialShieldKg(response.segments[0]?.shieldRemainingKg);
+        setFuelEstimate(response.fuelEstimate);
+        setTimelineIndex(0);
+        setStatus(t('routeSolved', { count: response.segments.length }));
+      }
     } catch {
       setStatus(t('routeFailed'));
       setSegments([]);
@@ -172,7 +182,14 @@ export const GalaxyWorkspace = () => {
           <button type="button" onClick={() => setAberrationBeta(0)}>{t('aberrationReset')}</button>
         </div>
 
-        <ShipParametersForm value={ship} onChange={setShip} onSubmit={() => void handleSolve()} loading={solving} />
+        <ShipParametersForm
+          value={ship}
+          onChange={setShip}
+          onSubmit={() => void handleSolve()}
+          loading={solving}
+          infeasibilityReason={infeasibilityReason}
+          fuelEstimate={fuelEstimate}
+        />
 
         <MissionTimeline
           events={timeline}

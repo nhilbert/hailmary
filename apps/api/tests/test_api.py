@@ -102,3 +102,47 @@ def test_route_solver_returns_relativistic_timeline() -> None:
     assert decel_segment["fuelRemainingKg"] >= 0
     assert decel_segment["lorentzFactor"] >= 1
     assert "shieldRemainingKg" in decel_segment
+
+
+def test_solve_by_spec_returns_fuel_estimate() -> None:
+    """solve-by-spec should compute fuel as output and return a feasible trajectory."""
+    response = client.post(
+        "/routes/solve-by-spec",
+        json={
+            "engineClass": "ion",
+            "dryMassKg": 500,
+            "maxAccelG": 0.0001,
+            "distanceKm": 1_000_000,
+            "enableGravityAssist": False,
+            "gravityAssistCandidates": [],
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["feasible"] is True
+    assert data["infeasibilityReason"] is None
+    assert data["fuelEstimate"] is not None
+    assert data["fuelEstimate"]["fuelMassKg"] > 0
+    assert data["fuelEstimate"]["fuelUnit"] == "propellant"
+    assert data["trajectory"] is not None
+    assert "segments" in data["trajectory"]
+
+
+def test_solve_by_spec_infeasible_accel() -> None:
+    """Requesting more g than the engine can provide should return infeasible."""
+    response = client.post(
+        "/routes/solve-by-spec",
+        json={
+            "engineClass": "ion",
+            "dryMassKg": 500,
+            "maxAccelG": 10.0,   # ion max is 0.002g
+            "distanceKm": 1_000_000,
+            "enableGravityAssist": False,
+            "gravityAssistCandidates": [],
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["feasible"] is False
+    assert data["infeasibilityReason"] is not None
+    assert "ion" in data["infeasibilityReason"].lower() or "cannot" in data["infeasibilityReason"].lower()

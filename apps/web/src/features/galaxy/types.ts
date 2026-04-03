@@ -22,13 +22,21 @@ export interface GalaxyStar {
   pmZ?: number;
 }
 
-export type EngineClass = 'ion' | 'warp' | 'quantum' | 'astrophage' | 'hyperdrive';
+export type EngineClass = 'ion' | 'fusion' | 'astrophage' | 'warp' | 'quantum' | 'hyperdrive';
 
 export interface ShipParameters {
   engineClass: EngineClass;
-  cargoMassTons: number;
-  maxBurnHours: number;
-  safetyMarginPct: number;
+  /** Ship + cargo dry mass in tonnes (zero-fuel weight). */
+  dryMassTons: number;
+  /** Maximum desired initial acceleration in g. */
+  maxAccelG: number;
+}
+
+export interface FuelEstimate {
+  fuelMassKg: number;
+  fuelUnit: string;
+  fuelUnitSuffix: string;
+  fuelAmountDisplay: number;
 }
 
 export interface ManeuverSegment {
@@ -50,6 +58,8 @@ export interface RouteSolveResponse {
   coastFractionUsed: number;
   shieldRemainingKg: number;
   segments: ManeuverSegment[];
+  fuelEstimate: FuelEstimate | null;
+  infeasibilityReason: string | null;
 }
 
 export interface TimelineEvent {

@@ -4,13 +4,17 @@ import math
 from dataclasses import dataclass, field
 
 from app.models import (
+    FuelEstimate,
     GravityAssistCandidate,
+    SolveBySpecRequest,
+    SolveBySpecResponse,
     SolveMissionParameters,
     SolvePhase,
     SolveShipParameters,
     SolveTimelineSegment,
     SolveTrajectoryResponse,
 )
+from physics.engines import get_engine_spec
 
 SPEED_OF_LIGHT_MPS = 299_792_458.0
 STANDARD_GRAVITY_MPS2 = 9.80665
@@ -554,4 +558,161 @@ def compute_trajectory(
         coastFractionUsed=coast_fraction,
         segments=response_segments,
         gravityAssistChosen=chosen_assist.name if chosen_assist else None,
+    )
+
+
+# ── Spec-driven solver (fuel as output) ───────────────────────────────────
+
+
+def _estimate_integration_step(burn_mass_kg: float, thrust_n: float, isp_s: float) -> float:
+    """Estimate a reasonable RK4 step size: target ~2000 steps per burn leg."""
+    mdot = thrust_n / (isp_s * STANDARD_GRAVITY_MPS2)
+    if mdot <= 0:
+        return 86_400.0
+    burn_s = burn_mass_kg / mdot
+    return max(1.0, min(86_400.0, burn_s / 2_000.0))
+
+
+def compute_required_fuel_kg(
+    dry_mass_kg: float,
+    thrust_newtons: float,
+    isp_seconds: float,
+    shield_mass_kg: float,
+    total_distance_m: float,
+    velocity_limit_mps: float,
+    mass_ratio_limit: float,
+) -> float:
+    """Binary-search for the minimum fuel mass that allows a brachistochrone (0% coast).
+
+    Returns the minimum fuel in kg required to cover *total_distance_m* with no
+    coast phase.  If even the mass-ratio limit is insufficient, returns the
+    maximum allowed fuel (caller should flag as infeasible coast trajectory).
+    """
+    max_fuel = dry_mass_kg * (mass_ratio_limit - 1.0)
+    coarse_step = _estimate_integration_step(max_fuel / 2, thrust_newtons, isp_seconds)
+
+    def accel_dist_for_fuel(fuel_kg: float) -> float:
+        ship = SolveShipParameters(
+            dryMassKg=dry_mass_kg,
+            fuelMassKg=fuel_kg,
+            thrustNewtons=thrust_newtons,
+            ispSeconds=isp_seconds,
+            shieldMassKg=shield_mass_kg if shield_mass_kg > 0 else None,
+        )
+        dist, _, _, _ = optimal_burn_distances(
+            ship=ship,
+            total_distance_m=total_distance_m,
+            velocity_limit_mps=velocity_limit_mps,
+            integration_step_s=coarse_step,
+        )
+        return dist
+
+    half_dist = total_distance_m / 2.0
+
+    # Quick check: can max fuel even do the brachistochrone?
+    if accel_dist_for_fuel(max_fuel) < half_dist:
+        return max_fuel  # caller treats this as a coast-only trip
+
+    # Binary search: find smallest fuel where accel_dist >= half_dist
+    lo, hi = 0.0, max_fuel
+    for _ in range(50):
+        if hi - lo < max(1.0, max_fuel * 1e-6):
+            break
+        mid = (lo + hi) / 2.0
+        if accel_dist_for_fuel(mid) < half_dist:
+            lo = mid
+        else:
+            hi = mid
+
+    return hi
+
+
+def solve_by_spec(request: SolveBySpecRequest) -> SolveBySpecResponse:
+    """High-level solver: accepts user-facing parameters and returns a full trajectory.
+
+    Fuel mass is *computed* rather than supplied by the caller.
+    Returns an infeasibility reason instead of a trajectory when the route is not
+    achievable with the requested engine class and dry mass.
+    """
+    try:
+        spec = get_engine_spec(request.engineClass)
+    except ValueError as exc:
+        return SolveBySpecResponse(feasible=False, infeasibilityReason=str(exc))
+
+    # Validate acceleration request
+    if request.maxAccelG > spec.max_accel_g:
+        return SolveBySpecResponse(
+            feasible=False,
+            infeasibilityReason=(
+                f"{request.engineClass} drive cannot exceed {spec.max_accel_g:.3g} g. "
+                f"Requested {request.maxAccelG:.3g} g."
+            ),
+        )
+
+    thrust_newtons = request.maxAccelG * STANDARD_GRAVITY_MPS2 * request.dryMassKg
+    isp_seconds = spec.isp_s
+    shield_mass_kg = spec.shield_mass_fraction * request.dryMassKg
+    total_distance_m = request.distanceKm * 1000.0
+    velocity_limit_mps = MAX_BETA * SPEED_OF_LIGHT_MPS
+
+    # Compute minimum fuel for the brachistochrone
+    fuel_kg = compute_required_fuel_kg(
+        dry_mass_kg=request.dryMassKg,
+        thrust_newtons=thrust_newtons,
+        isp_seconds=isp_seconds,
+        shield_mass_kg=shield_mass_kg,
+        total_distance_m=total_distance_m,
+        velocity_limit_mps=velocity_limit_mps,
+        mass_ratio_limit=spec.mass_ratio_limit,
+    )
+
+    # Check mass ratio feasibility
+    mass_ratio = (request.dryMassKg + shield_mass_kg + fuel_kg) / request.dryMassKg
+    if mass_ratio >= spec.mass_ratio_limit * 0.999:
+        return SolveBySpecResponse(
+            feasible=False,
+            infeasibilityReason=(
+                f"Required mass ratio ({mass_ratio:.0f}:1) exceeds the {request.engineClass} "
+                f"drive limit of {spec.mass_ratio_limit:.0f}:1. "
+                "Use a more powerful engine or reduce dry mass."
+            ),
+        )
+
+    # Fine-resolution integration step for the actual trajectory
+    fine_step = _estimate_integration_step(fuel_kg / 2, thrust_newtons, isp_seconds)
+
+    ship = SolveShipParameters(
+        dryMassKg=request.dryMassKg,
+        fuelMassKg=fuel_kg,
+        thrustNewtons=thrust_newtons,
+        ispSeconds=isp_seconds,
+        shieldMassKg=shield_mass_kg if shield_mass_kg > 0 else None,
+    )
+    mission = SolveMissionParameters(
+        distanceKm=request.distanceKm,
+        coastFraction=0.0,
+        maxVelocityMps=None,
+        enableGravityAssist=request.enableGravityAssist,
+        integrationStepSeconds=fine_step,
+    )
+
+    trajectory = compute_trajectory(
+        ship=ship,
+        mission=mission,
+        gravity_assists=request.gravityAssistCandidates,
+    )
+
+    fuel_display = fuel_kg * spec.fuel_unit_scale
+    fuel_estimate = FuelEstimate(
+        fuelMassKg=fuel_kg,
+        fuelUnit=spec.fuel_unit,
+        fuelUnitSuffix=spec.fuel_unit_suffix,
+        fuelAmountDisplay=fuel_display,
+    )
+
+    return SolveBySpecResponse(
+        feasible=True,
+        infeasibilityReason=None,
+        fuelEstimate=fuel_estimate,
+        trajectory=trajectory,
     )

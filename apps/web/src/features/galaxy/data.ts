@@ -233,58 +233,56 @@ export const STARS: GalaxyStar[] = [
 
 export const ENGINE_LABELS: Record<EngineClass, string> = {
   ion:        'engine.ion',
+  fusion:     'engine.fusion',
+  astrophage: 'engine.astrophage',
   warp:       'engine.warp',
   quantum:    'engine.quantum',
-  astrophage: 'engine.astrophage',
   hyperdrive: 'engine.hyperdrive',
 };
 
 export const SHIP_PRESETS: Record<string, ShipParameters> = {
   // ── Realistic ──────────────────────────────────────────────
+  // Ion probe: tiny, very slow. Realistic near-future (Dawn/Hayabusa class).
   'ion-probe': {
     engineClass: 'ion',
-    cargoMassTons: 5,
-    maxBurnHours: 720,
-    safetyMarginPct: 20,
+    dryMassTons: 0.5,
+    maxAccelG: 0.0001,
   },
+  // Fusion explorer: Project Daedalus / Icarus class. Modest thrust.
+  'fusion-explorer': {
+    engineClass: 'fusion',
+    dryMassTons: 450,
+    maxAccelG: 0.01,
+  },
+  // ── Project Hail Mary ──────────────────────────────────────
+  // Dry mass = ship structure + crew + equipment (astrophage fuel computed separately).
+  'hail-mary': {
+    engineClass: 'astrophage',
+    dryMassTons: 200,
+    maxAccelG: 1.5,
+  },
+  // ── Sci-fi drives ──────────────────────────────────────────
   scout: {
     engineClass: 'quantum',
-    cargoMassTons: 18,
-    maxBurnHours: 14,
-    safetyMarginPct: 10,
+    dryMassTons: 20,
+    maxAccelG: 1.0,
   },
   freighter: {
     engineClass: 'warp',
-    cargoMassTons: 120,
-    maxBurnHours: 30,
-    safetyMarginPct: 22,
-  },
-  explorer: {
-    engineClass: 'ion',
-    cargoMassTons: 45,
-    maxBurnHours: 48,
-    safetyMarginPct: 16,
-  },
-  // ── Project Hail Mary ──────────────────────────────────────
-  'hail-mary': {
-    engineClass: 'astrophage',
-    cargoMassTons: 490,
-    maxBurnHours: 9600,
-    safetyMarginPct: 5,
+    dryMassTons: 5_000,
+    maxAccelG: 0.5,
   },
   // ── Star Trek ──────────────────────────────────────────────
   enterprise: {
     engineClass: 'hyperdrive',
-    cargoMassTons: 190_000,
-    maxBurnHours: 8760,
-    safetyMarginPct: 20,
+    dryMassTons: 190_000,
+    maxAccelG: 10.0,
   },
   // ── Star Wars ──────────────────────────────────────────────
   'millennium-falcon': {
     engineClass: 'hyperdrive',
-    cargoMassTons: 900,
-    maxBurnHours: 720,
-    safetyMarginPct: 8,
+    dryMassTons: 100,
+    maxAccelG: 50.0,
   },
 };
 

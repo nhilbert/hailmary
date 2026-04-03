@@ -131,3 +131,29 @@ class SolveTrajectoryResponse(BaseModel):
     coastFractionUsed: float = Field(ge=0, le=1)
     segments: list[SolveTimelineSegment]
     gravityAssistChosen: str | None = None
+
+
+# ── Spec-driven solve (fuel as output) ────────────────────────────────────
+
+
+class SolveBySpecRequest(BaseModel):
+    engineClass: str
+    dryMassKg: float = Field(gt=0, description="Ship + cargo dry mass in kg")
+    maxAccelG: float = Field(gt=0, le=1000, description="Max desired initial acceleration in g")
+    distanceKm: float = Field(gt=0)
+    enableGravityAssist: bool = False
+    gravityAssistCandidates: list[GravityAssistCandidate] = Field(default_factory=list)
+
+
+class FuelEstimate(BaseModel):
+    fuelMassKg: float = Field(ge=0)
+    fuelUnit: str
+    fuelUnitSuffix: str
+    fuelAmountDisplay: float = Field(ge=0, description="Amount in display units (e.g. tonnes)")
+
+
+class SolveBySpecResponse(BaseModel):
+    feasible: bool
+    infeasibilityReason: str | None = None
+    fuelEstimate: FuelEstimate | None = None
+    trajectory: SolveTrajectoryResponse | None = None

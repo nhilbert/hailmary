@@ -3,53 +3,67 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import './i18n';
 
-// Shape matches SolveTrajectoryResponse from the API (apps/api/app/models.py)
+// Shape matches SolveBySpecResponse from /routes/solve-by-spec
 const mockSolveResponse = {
-  totalDistanceKm: 4.13e13,
-  totalEarthFrameSeconds: 43200,
-  totalOnboardSeconds: 43100,
-  totalDeltaVMps: 40000,
-  finalVelocityMps: 100,
-  fuelRemainingKg: 1000,
-  gravityAssistChosen: null,
-  segments: [
-    {
-      phase: 'acceleration',
-      distanceKm: 2e13,
-      startVelocityMps: 0,
-      endVelocityMps: 20000,
-      deltaVMps: 20000,
-      burnDurationSeconds: 14400,
-      earthFrameDurationSeconds: 14400,
-      onboardDurationSeconds: 14300,
-      startEarthTimeSeconds: 0,
-      endEarthTimeSeconds: 14400,
-      startOnboardTimeSeconds: 0,
-      endOnboardTimeSeconds: 14300,
-      fuelRemainingKg: 2000,
-      relativisticKineticEnergyJoules: 1e20,
-      lorentzFactor: 1.00001,
-      gravityAssistUsed: null
-    },
-    {
-      phase: 'deceleration',
-      distanceKm: 2.13e13,
-      startVelocityMps: 20000,
-      endVelocityMps: 100,
-      deltaVMps: 19900,
-      burnDurationSeconds: 28800,
-      earthFrameDurationSeconds: 28800,
-      onboardDurationSeconds: 28700,
-      startEarthTimeSeconds: 14400,
-      endEarthTimeSeconds: 43200,
-      startOnboardTimeSeconds: 14300,
-      endOnboardTimeSeconds: 43000,
-      fuelRemainingKg: 1000,
-      relativisticKineticEnergyJoules: 1e20,
-      lorentzFactor: 1.00001,
-      gravityAssistUsed: null
-    }
-  ]
+  feasible: true,
+  infeasibilityReason: null,
+  fuelEstimate: {
+    fuelMassKg: 500000,
+    fuelUnit: 'astrophage',
+    fuelUnitSuffix: 't',
+    fuelAmountDisplay: 500,
+  },
+  trajectory: {
+    totalDistanceKm: 4.13e13,
+    totalEarthFrameSeconds: 43200,
+    totalOnboardSeconds: 43100,
+    totalDeltaVMps: 40000,
+    finalVelocityMps: 100,
+    fuelRemainingKg: 1000,
+    shieldRemainingKg: 0,
+    coastFractionUsed: 0,
+    gravityAssistChosen: null,
+    segments: [
+      {
+        phase: 'acceleration',
+        distanceKm: 2e13,
+        startVelocityMps: 0,
+        endVelocityMps: 20000,
+        deltaVMps: 20000,
+        burnDurationSeconds: 14400,
+        earthFrameDurationSeconds: 14400,
+        onboardDurationSeconds: 14300,
+        startEarthTimeSeconds: 0,
+        endEarthTimeSeconds: 14400,
+        startOnboardTimeSeconds: 0,
+        endOnboardTimeSeconds: 14300,
+        fuelRemainingKg: 2000,
+        shieldRemainingKg: 0,
+        relativisticKineticEnergyJoules: 1e20,
+        lorentzFactor: 1.00001,
+        gravityAssistUsed: null
+      },
+      {
+        phase: 'deceleration',
+        distanceKm: 2.13e13,
+        startVelocityMps: 20000,
+        endVelocityMps: 100,
+        deltaVMps: 19900,
+        burnDurationSeconds: 28800,
+        earthFrameDurationSeconds: 28800,
+        onboardDurationSeconds: 28700,
+        startEarthTimeSeconds: 14400,
+        endEarthTimeSeconds: 43200,
+        startOnboardTimeSeconds: 14300,
+        endOnboardTimeSeconds: 43000,
+        fuelRemainingKg: 1000,
+        shieldRemainingKg: 0,
+        relativisticKineticEnergyJoules: 1e20,
+        lorentzFactor: 1.00001,
+        gravityAssistUsed: null
+      }
+    ]
+  }
 };
 
 describe('App accessibility and galaxy routing', () => {
@@ -119,7 +133,7 @@ describe('App accessibility and galaxy routing', () => {
 
   it('shows validation error for invalid parameters', () => {
     render(<App />);
-    fireEvent.change(screen.getByLabelText('Cargo mass (tons)'), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText('Dry mass — ship + cargo (t)'), { target: { value: '0' } });
     fireEvent.click(screen.getByRole('button', { name: 'Solve route' }));
 
     expect(screen.getByText('Please correct ship parameters before solving the route.')).toBeTruthy();
