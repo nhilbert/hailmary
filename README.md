@@ -108,3 +108,32 @@ Runtime environment variables for the API:
 
 - `STAR_INDEX_PATH`: optional path to generated `star_index.json`.
 - `TILES_ROOT`: optional path to generated binary tiles root (default `apps/api/data_pipeline/output/tiles`).
+
+## Galaxy navigation UI
+
+The web client now includes a galaxy workspace under `apps/web/src/features/galaxy` with:
+
+- Star picking interactions and a live detail side panel.
+- Route overlay rendering with per-phase maneuver colors (`departure`, `transfer`, `insertion`, `coast`).
+- Mission timeline scrubbing that synchronizes the active scene target and route segment focus.
+- Ship parameter form presets + validation and solver integration through `POST /routes/solve`.
+
+Expected `/routes/solve` response contract used by the UI:
+
+```json
+{
+  "routeId": "string",
+  "totalDurationHours": 0,
+  "totalDeltaV": 0,
+  "segments": [
+    {
+      "id": "seg-1",
+      "fromStarId": "sol",
+      "toStarId": "alpha-centauri",
+      "phase": "departure",
+      "durationHours": 0,
+      "deltaV": 0
+    }
+  ]
+}
+```
