@@ -1,40 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useKeyboardShortcuts } from './a11y/useKeyboardShortcuts';
-import { bootstrapBabylonScene } from './scene/bootstrapBabylon';
+import { GalaxyWorkspace } from './features/galaxy/GalaxyWorkspace';
 
 const App = () => {
   const { t, i18n } = useTranslation();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
   const shortcuts = useMemo(
     () => [
-      { key: '?', description: 'Toggle keyboard help', handler: () => setShowHelp((prev) => !prev) },
+      { key: '?', description: t('shortcutHelp'), handler: () => setShowHelp((prev) => !prev) },
       {
         key: 'l',
-        description: 'Toggle language',
+        description: t('shortcutLanguage'),
         handler: () => {
           void i18n.changeLanguage(i18n.language === 'en' ? 'es' : 'en');
         }
       }
     ],
-    [i18n]
+    [i18n, t]
   );
 
   useKeyboardShortcuts(shortcuts);
 
   useEffect(() => {
     mainRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (!canvasRef.current || canvasRef.current.getContext('webgl') === null) {
-      return;
-    }
-
-    return bootstrapBabylonScene(canvasRef.current);
   }, []);
 
   return (
@@ -54,12 +45,10 @@ const App = () => {
       <main id="main-content" ref={mainRef} tabIndex={-1}>
         <h2>{t('mainHeading')}</h2>
         <p>{t('keyboardHelp')}</p>
-        <section aria-label={t('sceneTitle')}>
-          <canvas ref={canvasRef} aria-label={t('sceneTitle')} className="scene-canvas" />
-        </section>
+        <GalaxyWorkspace />
         {showHelp ? (
           <aside aria-live="polite">
-            <h3>Keyboard Shortcuts</h3>
+            <h3>{t('shortcutTitle')}</h3>
             <ul>
               {shortcuts.map((shortcut) => (
                 <li key={shortcut.key}>
