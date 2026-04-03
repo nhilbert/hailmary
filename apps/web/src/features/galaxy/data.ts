@@ -2,10 +2,10 @@ import type { EngineClass, GalaxyStar, ShipParameters } from './types';
 import nearbyStarsRaw from './nearby-stars.json';
 
 export const PHASE_COLORS = {
-  departure: 'var(--color-phase-departure)',
-  transfer:  'var(--color-phase-transfer)',
-  insertion: 'var(--color-phase-insertion)',
-  coast:     'var(--color-phase-coast)',
+  departure: '#81dbff',
+  transfer:  '#b39aff',
+  insertion: '#8af8c2',
+  coast:     '#ffd98d',
 } as const;
 
 /**

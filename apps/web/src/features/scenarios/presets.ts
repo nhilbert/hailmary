@@ -43,6 +43,8 @@ export const SCENARIO_PRESETS: ScenarioPreset[] = [
         distanceKm: 0,
         deltaV: 9.4,
         shieldRemainingKg: 0,
+        startVelocityMps: 0,
+        endVelocityMps: 9400,
       },
       {
         id: 'realistic-2',
@@ -54,6 +56,8 @@ export const SCENARIO_PRESETS: ScenarioPreset[] = [
         distanceKm: 0,
         deltaV: 0,
         shieldRemainingKg: 0,
+        startVelocityMps: 9400,
+        endVelocityMps: 9400,
       },
       {
         id: 'realistic-3',
@@ -65,6 +69,8 @@ export const SCENARIO_PRESETS: ScenarioPreset[] = [
         distanceKm: 0,
         deltaV: 11.1,
         shieldRemainingKg: 0,
+        startVelocityMps: 9400,
+        endVelocityMps: 0,
       },
     ],
   },
@@ -97,6 +103,8 @@ export const SCENARIO_PRESETS: ScenarioPreset[] = [
         distanceKm: 0,
         deltaV: 180,
         shieldRemainingKg: 0,
+        startVelocityMps: 0,
+        endVelocityMps: 180_000,
       },
       {
         id: 'fictional-2',
@@ -108,6 +116,8 @@ export const SCENARIO_PRESETS: ScenarioPreset[] = [
         distanceKm: 0,
         deltaV: 240,
         shieldRemainingKg: 0,
+        startVelocityMps: 180_000,
+        endVelocityMps: 240_000,
       },
       {
         id: 'fictional-3',
@@ -119,6 +129,8 @@ export const SCENARIO_PRESETS: ScenarioPreset[] = [
         distanceKm: 0,
         deltaV: 95,
         shieldRemainingKg: 0,
+        startVelocityMps: 240_000,
+        endVelocityMps: 0,
       },
     ],
   },

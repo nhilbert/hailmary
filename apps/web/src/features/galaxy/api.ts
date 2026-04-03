@@ -86,6 +86,8 @@ export const solveRoute = async (payload: SolvePayload): Promise<RouteSolveRespo
         onboardDurationSeconds: number;
         deltaVMps: number;
         shieldRemainingKg: number;
+        startVelocityMps: number;
+        endVelocityMps: number;
       }>;
     } | null;
   };
@@ -115,6 +117,8 @@ export const solveRoute = async (payload: SolvePayload): Promise<RouteSolveRespo
     distanceKm:           seg.distanceKm,
     deltaV:               seg.deltaVMps,
     shieldRemainingKg:    seg.shieldRemainingKg,
+    startVelocityMps:     seg.startVelocityMps,
+    endVelocityMps:       seg.endVelocityMps,
   }));
 
   const fuelEstimate: FuelEstimate | null = data.fuelEstimate

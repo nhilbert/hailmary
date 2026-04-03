@@ -54,6 +54,8 @@ export const GalaxyWorkspace = () => {
         durationHours: segment.durationHours,
         durationHoursOnboard: segment.durationHoursOnboard,
         shieldRemainingKg: segment.shieldRemainingKg,
+        startVelocityMps: segment.startVelocityMps,
+        endVelocityMps: segment.endVelocityMps,
       };
     });
   }, [segments, t]);

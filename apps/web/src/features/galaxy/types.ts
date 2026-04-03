@@ -49,6 +49,8 @@ export interface ManeuverSegment {
   distanceKm: number;
   deltaV: number;
   shieldRemainingKg: number;
+  startVelocityMps: number;
+  endVelocityMps: number;
 }
 
 export interface RouteSolveResponse {
@@ -72,4 +74,6 @@ export interface TimelineEvent {
   durationHours: number;
   durationHoursOnboard: number;
   shieldRemainingKg: number;
+  startVelocityMps: number;
+  endVelocityMps: number;
 }

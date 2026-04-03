@@ -375,6 +375,20 @@ button[type="submit"]:disabled { opacity: 0.5; cursor: wait; }
   color: var(--focus);
 }
 
+.speed-chart {
+  display: block;
+  width: 100%;
+  height: 5rem;
+  margin: 0.4rem 0 0.6rem;
+  overflow: visible;
+}
+
+.speed-chart-label {
+  font-size: 7px;
+  fill: var(--text-muted);
+  font-family: inherit;
+}
+
 .phase-dot {
   width: 0.5rem;
   height: 0.5rem;
