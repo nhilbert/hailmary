@@ -11,7 +11,13 @@ class EngineClass(str, Enum):
 
 class StarSearchRequest(BaseModel):
     query: str = Field(min_length=1)
-    limit: int = Field(default=10, ge=1, le=50)
+    limit: int = Field(default=10, ge=1, le=100)
+
+
+class CartesianVector(BaseModel):
+    xPc: float
+    yPc: float
+    zPc: float
 
 
 class StarSummary(BaseModel):
@@ -20,6 +26,13 @@ class StarSummary(BaseModel):
     constellation: str
     magnitude: float
     distanceLightYears: float = Field(ge=0)
+    positionCartesian: CartesianVector | None = None
+
+
+class StarDetail(StarSummary):
+    raDeg: float
+    decDeg: float
+    uncertaintyCartesian: CartesianVector
 
 
 class StarSearchResponse(BaseModel):
