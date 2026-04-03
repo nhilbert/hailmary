@@ -1,12 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useKeyboardShortcuts } from './a11y/useKeyboardShortcuts';
 import { GalaxyWorkspace } from './features/galaxy/GalaxyWorkspace';
+
+const SUPPORTED_LANGUAGES = ['en', 'es', 'fr'];
 
 const App = () => {
   const { t, i18n } = useTranslation();
   const mainRef = useRef<HTMLElement | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+
+  const toggleLanguage = useCallback(() => {
+    const currentIndex = SUPPORTED_LANGUAGES.indexOf(i18n.language);
+    const nextIndex = (currentIndex + 1) % SUPPORTED_LANGUAGES.length;
+    void i18n.changeLanguage(SUPPORTED_LANGUAGES[nextIndex]);
+  }, [i18n]);
 
   const shortcuts = useMemo(
     () => [
@@ -14,12 +22,10 @@ const App = () => {
       {
         key: 'l',
         description: t('shortcutLanguage'),
-        handler: () => {
-          void i18n.changeLanguage(i18n.language === 'en' ? 'es' : 'en');
-        }
+        handler: toggleLanguage
       }
     ],
-    [i18n, t]
+    [t, toggleLanguage]
   );
 
   useKeyboardShortcuts(shortcuts);
@@ -37,8 +43,8 @@ const App = () => {
         <h1>{t('appTitle')}</h1>
         <p>{t('tagline')}</p>
       </header>
-      <nav aria-label="utility">
-        <button type="button" onClick={() => void i18n.changeLanguage(i18n.language === 'en' ? 'es' : 'en')}>
+      <nav aria-label={t('utilityNavLabel')}>
+        <button type="button" aria-label={t('languageToggleLabel')} onClick={toggleLanguage}>
           {i18n.language.toUpperCase()}
         </button>
       </nav>
@@ -59,7 +65,7 @@ const App = () => {
           </aside>
         ) : null}
       </main>
-      <footer role="contentinfo">© HailMary</footer>
+      <footer role="contentinfo">{t('footerText', { year: new Date().getFullYear() })}</footer>
     </>
   );
 };

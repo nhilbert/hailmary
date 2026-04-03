@@ -46,6 +46,34 @@ ruff check apps/api
 pytest apps/api/tests
 ```
 
+
+## Internationalization and accessibility
+
+The web app uses i18next resources in `apps/web/src/locales` with:
+
+- `en` as the primary locale.
+- `es` as a complete additional locale.
+- `fr` as a scaffold locale for future translation expansion.
+
+Accessibility coverage includes:
+
+- Keyboard-first interactions for route solving and language toggling.
+- ARIA labels and live regions for dynamic route status updates.
+- Screen-reader route summaries with segment-by-segment text output.
+- Color tokens for route phases and high-contrast-friendly surface/text combinations.
+- `prefers-reduced-motion` support to minimize motion effects.
+
+## CI pipeline
+
+GitHub Actions workflow: `.github/workflows/ci.yml` runs and fails on any error for:
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
 ## API endpoints
 
 - `POST /stars/search` and `GET /stars/search`: filter stars by name/id/constellation.

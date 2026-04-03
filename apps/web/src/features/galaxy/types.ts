@@ -9,7 +9,7 @@ export interface GalaxyStar {
   x: number;
   y: number;
   z: number;
-  description: string;
+  descriptionKey: string;
 }
 
 export interface ShipParameters {

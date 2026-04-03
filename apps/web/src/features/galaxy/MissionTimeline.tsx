@@ -27,6 +27,7 @@ export const MissionTimeline = ({ events, activeIndex, onScrub }: MissionTimelin
         min={0}
         max={events.length - 1}
         value={activeIndex}
+        aria-valuetext={t('timelineValueText', { index: activeIndex + 1, total: events.length })}
         onChange={(event) => onScrub(Number(event.target.value))}
       />
       <p aria-live="polite">
@@ -38,11 +39,7 @@ export const MissionTimeline = ({ events, activeIndex, onScrub }: MissionTimelin
       <ol>
         {events.map((item, index) => (
           <li key={item.id} className={index === activeIndex ? 'timeline-active' : ''}>
-            <span
-              aria-hidden="true"
-              className="phase-dot"
-              style={{ background: PHASE_COLORS[item.phase] }}
-            />
+            <span aria-hidden="true" className="phase-dot" style={{ background: PHASE_COLORS[item.phase] }} />
             {item.label}
           </li>
         ))}

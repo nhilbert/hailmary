@@ -1,10 +1,10 @@
 import type { GalaxyStar, ShipParameters } from './types';
 
 export const PHASE_COLORS = {
-  departure: '#5ad1ff',
-  transfer: '#9b7bff',
-  insertion: '#63f7a9',
-  coast: '#ffc965'
+  departure: 'var(--color-phase-departure)',
+  transfer: 'var(--color-phase-transfer)',
+  insertion: 'var(--color-phase-insertion)',
+  coast: 'var(--color-phase-coast)'
 } as const;
 
 export const STARS: GalaxyStar[] = [
@@ -17,7 +17,7 @@ export const STARS: GalaxyStar[] = [
     x: 10,
     y: 70,
     z: 0,
-    description: 'Home system and common departure point for missions.'
+    descriptionKey: 'starDescription.sol'
   },
   {
     id: 'alpha-centauri',
@@ -28,7 +28,7 @@ export const STARS: GalaxyStar[] = [
     x: 35,
     y: 55,
     z: 2,
-    description: 'Nearest stellar system with high refuel infrastructure density.'
+    descriptionKey: 'starDescription.alpha-centauri'
   },
   {
     id: 'barnards-star',
@@ -39,7 +39,7 @@ export const STARS: GalaxyStar[] = [
     x: 50,
     y: 32,
     z: -1,
-    description: 'Low-luminosity red dwarf often used for training routes.'
+    descriptionKey: 'starDescription.barnards-star'
   },
   {
     id: 'sirius',
@@ -50,7 +50,7 @@ export const STARS: GalaxyStar[] = [
     x: 76,
     y: 24,
     z: 5,
-    description: 'Major logistics hub with dense traffic and strict insertion windows.'
+    descriptionKey: 'starDescription.sirius'
   }
 ];
 
