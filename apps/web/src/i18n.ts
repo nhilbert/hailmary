@@ -43,7 +43,34 @@ const resources = {
       timelineTitle: 'Mission timeline',
       timelineEmpty: 'No route solved yet.',
       timelineScrubber: 'Timeline scrubber',
-      timelineNow: '{{label}} at {{elapsedHours}}h elapsed'
+      timelineNow: '{{label}} at {{elapsedHours}}h elapsed',
+      scenarioLoaded: 'Loaded scenario: {{title}}',
+      'scenario.sectionTitle': 'Seeded scenarios',
+      'scenario.oneClickHint': 'Load a profile to focus the map, ship form, and timeline in one click.',
+      'scenario.assumptionsLabel': 'Assumptions',
+      'scenario.nonCanonLabel': 'Non-canon disclaimer:',
+      'scenario.realisticPhysics.title': 'Realistic physics profile',
+      'scenario.realisticPhysics.summary':
+        'Finite-thrust planning route from Sol to Alpha Centauri with conservative margins.',
+      'scenario.realisticPhysics.assumptionOne':
+        'Finite-thrust ion propulsion with conservative safety reserve.',
+      'scenario.realisticPhysics.assumptionTwo':
+        'Acceleration and insertion windows are mission-control constrained.',
+      'scenario.realisticPhysics.assumptionThree':
+        'Cruise segment reflects long-duration coast under known physics.',
+      'scenario.realisticPhysics.disclaimer':
+        'Non-canon training profile intended for planning practice.',
+      'scenario.fictionalDrive.title': 'Fictional drive profile',
+      'scenario.fictionalDrive.summary':
+        'Speculative high-speed route from Sol to Sirius using an intentionally fictional drive model.',
+      'scenario.fictionalDrive.assumptionOne':
+        'Speculative quantum lane compression allows superluminal transfer.',
+      'scenario.fictionalDrive.assumptionTwo':
+        'Navigation lock assumes stable beacons with no drift.',
+      'scenario.fictionalDrive.assumptionThree':
+        'Insertion burn modeled as deterministic for training UI only.',
+      'scenario.fictionalDrive.disclaimer':
+        'Non-canon sandbox profile; values are intentionally fictional.'
     }
   },
   es: {
@@ -87,7 +114,35 @@ const resources = {
       timelineTitle: 'Cronología de misión',
       timelineEmpty: 'Todavía no hay una ruta resuelta.',
       timelineScrubber: 'Control de cronología',
-      timelineNow: '{{label}} con {{elapsedHours}}h transcurridas'
+      timelineNow: '{{label}} con {{elapsedHours}}h transcurridas',
+      scenarioLoaded: 'Escenario cargado: {{title}}',
+      'scenario.sectionTitle': 'Escenarios predefinidos',
+      'scenario.oneClickHint':
+        'Carga un perfil para enfocar el mapa, formulario de nave y cronología con un clic.',
+      'scenario.assumptionsLabel': 'Supuestos',
+      'scenario.nonCanonLabel': 'Descargo no canónico:',
+      'scenario.realisticPhysics.title': 'Perfil de física realista',
+      'scenario.realisticPhysics.summary':
+        'Ruta de planificación de empuje finito de Sol a Alfa Centauri con márgenes conservadores.',
+      'scenario.realisticPhysics.assumptionOne':
+        'Propulsión iónica de empuje finito con reserva de seguridad conservadora.',
+      'scenario.realisticPhysics.assumptionTwo':
+        'Las ventanas de aceleración e inserción están limitadas por control de misión.',
+      'scenario.realisticPhysics.assumptionThree':
+        'El tramo de crucero refleja una costa de larga duración bajo física conocida.',
+      'scenario.realisticPhysics.disclaimer':
+        'Perfil de entrenamiento no canónico destinado a práctica de planificación.',
+      'scenario.fictionalDrive.title': 'Perfil de motor ficticio',
+      'scenario.fictionalDrive.summary':
+        'Ruta especulativa de alta velocidad de Sol a Sirio con un modelo de motor intencionalmente ficticio.',
+      'scenario.fictionalDrive.assumptionOne':
+        'La compresión cuántica especulativa permite transferencia superlumínica.',
+      'scenario.fictionalDrive.assumptionTwo':
+        'El bloqueo de navegación supone balizas estables sin deriva.',
+      'scenario.fictionalDrive.assumptionThree':
+        'La quema de inserción se modela como determinista solo para entrenamiento UI.',
+      'scenario.fictionalDrive.disclaimer':
+        'Perfil sandbox no canónico; los valores son intencionalmente ficticios.'
     }
   }
 };
