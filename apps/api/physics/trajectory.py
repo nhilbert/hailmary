@@ -897,9 +897,13 @@ def solve_by_spec(request: SolveBySpecRequest) -> SolveBySpecResponse:
         proper_accel_g=proper_accel_g,
     )
 
-    # Check mass ratio feasibility
+    # Check mass ratio feasibility.
+    # For constant-proper-accel drives, the analytic solver returns the exact required fuel;
+    # if that exceeds the limit, the trip is genuinely impossible.
+    # For constant-thrust drives, compute_required_fuel_kg caps at max_fuel and the ship
+    # coasts the remainder — that is still a valid (coast-heavy) trajectory, not infeasible.
     mass_ratio = (request.dryMassKg + shield_mass_kg + fuel_kg) / request.dryMassKg
-    if mass_ratio >= spec.mass_ratio_limit * 0.999:
+    if spec.constant_proper_accel and mass_ratio >= spec.mass_ratio_limit * 0.999:
         return SolveBySpecResponse(
             feasible=False,
             infeasibilityReason=(

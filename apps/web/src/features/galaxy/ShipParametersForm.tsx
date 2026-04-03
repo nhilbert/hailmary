@@ -56,10 +56,12 @@ export const ShipParametersForm = ({
       >
         <optgroup label={t('engineGroupRealistic')}>
           <option value="ion">{t('engine.ion')}</option>
+          <option value="orion">{t('engine.orion')}</option>
           <option value="fusion">{t('engine.fusion')}</option>
+          <option value="antimatter">{t('engine.antimatter')}</option>
+          <option value="astrophage">{t('engine.astrophage')}</option>
         </optgroup>
         <optgroup label={t('engineGroupScifi')}>
-          <option value="astrophage">{t('engine.astrophage')}</option>
           <option value="warp">{t('engine.warp')}</option>
           <option value="quantum">{t('engine.quantum')}</option>
           <option value="hyperdrive">{t('engine.hyperdrive')}</option>

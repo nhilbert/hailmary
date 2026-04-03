@@ -22,7 +22,7 @@ export interface GalaxyStar {
   pmZ?: number;
 }
 
-export type EngineClass = 'ion' | 'fusion' | 'astrophage' | 'warp' | 'quantum' | 'hyperdrive';
+export type EngineClass = 'ion' | 'orion' | 'fusion' | 'antimatter' | 'astrophage' | 'warp' | 'quantum' | 'hyperdrive';
 
 export interface ShipParameters {
   engineClass: EngineClass;

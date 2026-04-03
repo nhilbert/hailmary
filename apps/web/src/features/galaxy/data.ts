@@ -233,7 +233,9 @@ export const STARS: GalaxyStar[] = [
 
 export const ENGINE_LABELS: Record<EngineClass, string> = {
   ion:        'engine.ion',
+  orion:      'engine.orion',
   fusion:     'engine.fusion',
+  antimatter: 'engine.antimatter',
   astrophage: 'engine.astrophage',
   warp:       'engine.warp',
   quantum:    'engine.quantum',
@@ -248,11 +250,25 @@ export const SHIP_PRESETS: Record<string, ShipParameters> = {
     dryMassTons: 0.5,
     maxAccelG: 0.0001,
   },
-  // Fusion explorer: Project Daedalus / Icarus class. Modest thrust.
+  // Orion battleship: nuclear pulse drive, Dyson (1968) interstellar concept.
+  // 10,000 t dry mass, 1.0g acceleration via fission/fusion bomb pulses. TRL 4.
+  'orion-battleship': {
+    engineClass: 'orion',
+    dryMassTons: 10_000,
+    maxAccelG: 1.0,
+  },
+  // Fusion explorer: Project Daedalus / Icarus class. D-³He ICF, vₑ ≈ 0.04c.
   'fusion-explorer': {
     engineClass: 'fusion',
     dryMassTons: 450,
     maxAccelG: 0.01,
+  },
+  // Antimatter torch: pion beam core drive, vₑ ≈ 0.33c.
+  // Most powerful physically plausible drive. Reaches nearby stars in years.
+  'antimatter-torch': {
+    engineClass: 'antimatter',
+    dryMassTons: 1_000,
+    maxAccelG: 0.3,
   },
   // ── Project Hail Mary ──────────────────────────────────────
   // Dry mass = ship structure + crew + equipment (astrophage fuel computed separately).

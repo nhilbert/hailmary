@@ -49,14 +49,41 @@ ENGINE_SPECS: dict[str, EngineSpec] = {
         fuel_unit_scale=0.001,
         fuel_unit_suffix="t",
     ),
-    # Fusion: Higher thrust, moderate Isp. Project Daedalus / Icarus class.
+    # Fusion: D-³He ICF, Project Daedalus / Icarus class. vₑ ≈ 0.04c (10,600 km/s).
+    # Daedalus measured ve = 10,600 km/s → Isp ≈ 1.08 × 10⁶ s.
     "fusion": EngineSpec(
-        isp_s=350_000,
+        isp_s=1_200_000,
         max_accel_g=0.05,
-        mass_ratio_limit=250,
+        mass_ratio_limit=400,
         fuel_unit="D-He3 pellets",
         fuel_unit_scale=0.001,
         fuel_unit_suffix="t",
+    ),
+    # Nuclear pulse (Orion): fission/fusion bombs detonated against a pusher plate.
+    # Based on Dyson (1968) interstellar Orion design and Project Icarus estimates.
+    # vₑ ≈ 6,500–30,000 km/s; we use the fission-fusion midpoint at ~6,500 km/s.
+    # Isp 200,000 s; high thrust allows heavy ships at 1g. TRL 4 (studied 1958–1963).
+    "orion": EngineSpec(
+        isp_s=200_000,
+        max_accel_g=1.0,
+        mass_ratio_limit=500,
+        fuel_unit="pulse units",
+        fuel_unit_scale=0.001,
+        fuel_unit_suffix="t",
+    ),
+    # Antimatter (pion beam core): proton-antiproton annihilation → charged pions directed
+    # by magnetic nozzle. vₑ ≈ 0.33c, Isp ≈ 10⁷ s. Most powerful physically plausible drive.
+    # Throttleable — modulates thrust to hold constant proper acceleration.
+    # ~5% gamma-ray shield fraction needed (remaining radiation absorbed by structure).
+    "antimatter": EngineSpec(
+        isp_s=10_000_000,
+        max_accel_g=0.5,
+        mass_ratio_limit=1_000,
+        fuel_unit="antiprotons",
+        fuel_unit_scale=0.001,
+        fuel_unit_suffix="t",
+        shield_mass_fraction=0.05,
+        constant_proper_accel=True,
     ),
     # ── Sci-fi drives ────────────────────────────────────────────────────────
     # Astrophage (Project Hail Mary): near-c exhaust, enormous mass ratio.
