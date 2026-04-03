@@ -33,6 +33,10 @@ class EngineSpec:
     shield_mass_fraction: float = 0.0
     """Shield mass as a fraction of dry mass (ISM erosion protection)."""
 
+    constant_proper_accel: bool = False
+    """If True, the drive maintains constant proper acceleration by varying thrust with
+    current mass (F(t) = a·m(t)).  If False, thrust is constant (classical rocket)."""
+
 
 ENGINE_SPECS: dict[str, EngineSpec] = {
     # ── Near-future / physically plausible ──────────────────────────────────
@@ -56,6 +60,8 @@ ENGINE_SPECS: dict[str, EngineSpec] = {
     ),
     # ── Sci-fi drives ────────────────────────────────────────────────────────
     # Astrophage (Project Hail Mary): near-c exhaust, enormous mass ratio.
+    # The drive throttles continuously to hold constant proper acceleration
+    # (thrust ∝ current mass), matching the novel's physics.
     "astrophage": EngineSpec(
         isp_s=25_000_000,
         max_accel_g=2.0,
@@ -64,6 +70,7 @@ ENGINE_SPECS: dict[str, EngineSpec] = {
         fuel_unit_scale=0.001,
         fuel_unit_suffix="t",
         shield_mass_fraction=0.25,
+        constant_proper_accel=True,
     ),
     # Warp drive: fictional FTL-capable, moderate Isp by sci-fi convention.
     "warp": EngineSpec(

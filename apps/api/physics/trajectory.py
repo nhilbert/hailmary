@@ -120,6 +120,118 @@ def _burn_derivs(
     )
 
 
+def _integrate_burn_const_accel(
+    *,
+    phase: SolvePhase,
+    state: IntegratorState,
+    distance_target_m: float,
+    proper_accel_g: float,
+    isp_seconds: float,
+    dry_mass_kg: float,
+    direction: float,
+    dt_s: float,
+    velocity_limit_mps: float,
+    ism_erosion_rate_kg_per_m: float,
+) -> tuple[SegmentResult, IntegratorState]:
+    """Constant proper-acceleration burn.
+
+    The drive adjusts thrust at every instant so that d(γv)/dt = direction·a
+    remains constant regardless of remaining fuel mass.  Mass decays
+    exponentially: m(t) = m₀ · exp(−a_g · t / isp).
+
+    This models drives like Project Hail Mary's astrophage engine that
+    throttle continuously to maintain a fixed g-load on the crew.
+    """
+    a_mps2 = proper_accel_g * STANDARD_GRAVITY_MPS2
+    velocity_limit_gv = gamma_v_from_velocity(velocity_limit_mps)
+
+    distance_travelled = 0.0
+    burn_duration_s = 0.0
+    velocity_start = state.velocity_mps
+    earth_start = state.earth_time_s
+    onboard_start = state.onboard_time_s
+
+    while distance_travelled < distance_target_m:
+        if state.fuel_kg <= 0 or state.mass_kg <= dry_mass_kg:
+            break
+
+        # Time until fuel is exhausted (exact analytic result)
+        t_fuel = isp_seconds * math.log(state.mass_kg / dry_mass_kg) / proper_accel_g
+
+        # Time until velocity cap or zero-velocity floor
+        if direction > 0:
+            t_vcap = max(0.0, (velocity_limit_gv - state.gamma_v) / a_mps2)
+        else:
+            t_vcap = state.gamma_v / a_mps2 if a_mps2 > 0 else float('inf')
+
+        actual_dt = min(dt_s, t_fuel, t_vcap)
+        if actual_dt <= 0:
+            break
+
+        # γv advances exactly linearly (definition of constant proper accel)
+        new_gamma_v = state.gamma_v + direction * a_mps2 * actual_dt
+        if direction > 0:
+            new_gamma_v = min(new_gamma_v, velocity_limit_gv)
+        else:
+            new_gamma_v = max(new_gamma_v, 0.0)
+
+        # Distance via midpoint velocity (2nd-order accurate)
+        v_mid = velocity_from_gamma_v((state.gamma_v + new_gamma_v) / 2.0)
+        step_dist = v_mid * actual_dt
+
+        # Clamp to distance target
+        if distance_travelled + step_dist > distance_target_m and step_dist > 0:
+            frac = (distance_target_m - distance_travelled) / step_dist
+            actual_dt *= frac
+            step_dist = distance_target_m - distance_travelled
+            new_gamma_v = state.gamma_v + direction * a_mps2 * actual_dt
+            if direction > 0:
+                new_gamma_v = min(new_gamma_v, velocity_limit_gv)
+            else:
+                new_gamma_v = max(new_gamma_v, 0.0)
+
+        # Mass decays exponentially (exact)
+        mass_after = state.mass_kg * math.exp(-proper_accel_g * actual_dt / isp_seconds)
+        fuel_used = state.mass_kg - mass_after
+
+        # Proper time: dτ = dt / γ, using midpoint γ
+        gamma_mid = lorentz_factor(v_mid)
+        d_onboard = actual_dt / gamma_mid if gamma_mid > 0 else actual_dt
+
+        # ISM erosion
+        shield_eroded = ism_erosion_rate_kg_per_m * step_dist
+        state.shield_kg = max(0.0, state.shield_kg - shield_eroded)
+
+        distance_travelled += step_dist
+        burn_duration_s += actual_dt
+        state.fuel_kg = max(0.0, state.fuel_kg - fuel_used)
+        state.mass_kg = max(dry_mass_kg, mass_after)
+        state.gamma_v = new_gamma_v
+        state.earth_time_s += actual_dt
+        state.onboard_time_s += d_onboard
+
+    final_v = state.velocity_mps
+    segment = SegmentResult(
+        phase=phase,
+        distance_m=distance_travelled,
+        start_velocity_mps=velocity_start,
+        end_velocity_mps=final_v,
+        delta_v_mps=abs(final_v - velocity_start),
+        burn_duration_s=burn_duration_s,
+        earth_time_s=state.earth_time_s - earth_start,
+        onboard_time_s=state.onboard_time_s - onboard_start,
+        fuel_remaining_kg=state.fuel_kg,
+        shield_remaining_kg=state.shield_kg,
+        start_earth_time_s=earth_start,
+        end_earth_time_s=state.earth_time_s,
+        start_onboard_time_s=onboard_start,
+        end_onboard_time_s=state.onboard_time_s,
+        relativistic_kinetic_energy_j=relativistic_kinetic_energy_j(state.mass_kg, final_v),
+        lorentz_factor=lorentz_factor(final_v),
+    )
+    return segment, state
+
+
 def integrate_burn(
     *,
     phase: SolvePhase,
@@ -132,8 +244,12 @@ def integrate_burn(
     dt_s: float,
     velocity_limit_mps: float,
     ism_erosion_rate_kg_per_m: float = 0.0,
+    proper_accel_g: float = 0.0,
 ) -> tuple[SegmentResult, IntegratorState]:
-    """RK4 burn integration tracking γv directly.
+    """RK4 burn integration tracking γv directly (constant-thrust drives).
+
+    For drives with constant_proper_accel=True, delegates to
+    _integrate_burn_const_accel instead.
 
     The key equations (from the reference, §3.3):
         d(γv)/dt = F/m          — exact relativistic EOM (no γ³ approximation)
@@ -141,6 +257,20 @@ def integrate_burn(
         dτ/dt = 1/γ             — proper time accumulation
         dm/dt = -F/v_e          — Tsiolkovsky mass flow
     """
+    if proper_accel_g > 0.0:
+        return _integrate_burn_const_accel(
+            phase=phase,
+            state=state,
+            distance_target_m=distance_target_m,
+            proper_accel_g=proper_accel_g,
+            isp_seconds=isp_seconds,
+            dry_mass_kg=dry_mass_kg,
+            direction=direction,
+            dt_s=dt_s,
+            velocity_limit_mps=velocity_limit_mps,
+            ism_erosion_rate_kg_per_m=ism_erosion_rate_kg_per_m,
+        )
+
     mdot = thrust_newtons / (isp_seconds * STANDARD_GRAVITY_MPS2)
     velocity_limit_gamma_v = gamma_v_from_velocity(velocity_limit_mps)
 
@@ -236,6 +366,7 @@ def optimal_burn_distances(
     total_distance_m: float,
     velocity_limit_mps: float,
     integration_step_s: float,
+    proper_accel_g: float = 0.0,
 ) -> tuple[float, float, float, float]:
     """Compute (accel_distance, coast_distance, decel_distance, coast_fraction).
 
@@ -267,6 +398,7 @@ def optimal_burn_distances(
         direction=1.0,
         dt_s=integration_step_s,
         velocity_limit_mps=velocity_limit_mps,
+        proper_accel_g=proper_accel_g,
     )
 
     accel_dist = seg.distance_m
@@ -379,6 +511,7 @@ def compute_trajectory(
     ship: SolveShipParameters,
     mission: SolveMissionParameters,
     gravity_assists: list[GravityAssistCandidate] | None,
+    proper_accel_g: float = 0.0,
 ) -> SolveTrajectoryResponse:
     total_distance_m = mission.distanceKm * 1000.0
     velocity_limit_mps = min(
@@ -393,6 +526,7 @@ def compute_trajectory(
         total_distance_m=total_distance_m,
         velocity_limit_mps=velocity_limit_mps,
         integration_step_s=integration_step_s,
+        proper_accel_g=proper_accel_g,
     )
 
     # ── Initial state ─────────────────────────────────────────────────
@@ -427,6 +561,7 @@ def compute_trajectory(
         dt_s=integration_step_s,
         velocity_limit_mps=velocity_limit_mps,
         ism_erosion_rate_kg_per_m=erosion_rate_accel,
+        proper_accel_g=proper_accel_g,
     )
     # Restore the reserved decel fuel after the accel leg completes
     state.fuel_kg   = half_fuel
@@ -519,6 +654,7 @@ def compute_trajectory(
         dt_s=integration_step_s,
         velocity_limit_mps=velocity_limit_mps,
         ism_erosion_rate_kg_per_m=erosion_rate_accel,
+        proper_accel_g=proper_accel_g,
     )
     segments.append(decel_segment)
 
@@ -581,6 +717,7 @@ def compute_required_fuel_kg(
     total_distance_m: float,
     velocity_limit_mps: float,
     mass_ratio_limit: float,
+    proper_accel_g: float = 0.0,
 ) -> float:
     """Binary-search for the minimum fuel mass that allows a brachistochrone (0% coast).
 
@@ -604,6 +741,7 @@ def compute_required_fuel_kg(
             total_distance_m=total_distance_m,
             velocity_limit_mps=velocity_limit_mps,
             integration_step_s=coarse_step,
+            proper_accel_g=proper_accel_g,
         )
         return dist
 
@@ -649,6 +787,9 @@ def solve_by_spec(request: SolveBySpecRequest) -> SolveBySpecResponse:
             ),
         )
 
+    # For constant-proper-accel drives the thrust param is nominal (overridden per-step).
+    # For constant-thrust drives it is the actual engine output.
+    proper_accel_g = request.maxAccelG if spec.constant_proper_accel else 0.0
     thrust_newtons = request.maxAccelG * STANDARD_GRAVITY_MPS2 * request.dryMassKg
     isp_seconds = spec.isp_s
     shield_mass_kg = spec.shield_mass_fraction * request.dryMassKg
@@ -664,6 +805,7 @@ def solve_by_spec(request: SolveBySpecRequest) -> SolveBySpecResponse:
         total_distance_m=total_distance_m,
         velocity_limit_mps=velocity_limit_mps,
         mass_ratio_limit=spec.mass_ratio_limit,
+        proper_accel_g=proper_accel_g,
     )
 
     # Check mass ratio feasibility
@@ -700,6 +842,7 @@ def solve_by_spec(request: SolveBySpecRequest) -> SolveBySpecResponse:
         ship=ship,
         mission=mission,
         gravity_assists=request.gravityAssistCandidates,
+        proper_accel_g=proper_accel_g,
     )
 
     fuel_display = fuel_kg * spec.fuel_unit_scale
