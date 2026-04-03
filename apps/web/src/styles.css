@@ -1,0 +1,35 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #f3f6ff;
+  background: #111529;
+}
+
+body {
+  margin: 0;
+}
+
+header,
+main,
+footer,
+nav {
+  padding: 1rem;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  background: #fff;
+  color: #000;
+  padding: 0.5rem;
+}
+
+.scene-canvas {
+  width: 100%;
+  min-height: 320px;
+  border: 1px solid #445;
+}
